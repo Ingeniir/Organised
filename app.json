@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Organised",
-    "slug": "Organised",
+    "slug": "organised",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -43,6 +43,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3936c362-8a90-40d2-b091-421da99051ac"
+      }
+    },
+    "owner": "burn-man"
   }
 }
