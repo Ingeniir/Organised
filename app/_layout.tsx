@@ -4,6 +4,7 @@ import { supabase } from "@/src/lib/supabase";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
   const { session, setSession } = useAuthStore();
@@ -41,8 +42,10 @@ export default function RootLayout() {
   }, [session, segments, initialized])
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Slot />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Slot />
+      </ThemeProvider>
+    </SafeAreaProvider>
   )
 }

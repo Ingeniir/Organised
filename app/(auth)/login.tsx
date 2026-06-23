@@ -5,7 +5,7 @@ import { supabase } from "@/src/lib/supabase"
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { Link } from "expo-router"
 import { useState } from "react"
-import { Alert, StyleSheet, Text, TouchableOpacity } from "react-native"
+import { Alert, StyleSheet, TouchableOpacity } from "react-native"
 
 export default function LoginScreen() {
     const [email, setEmail] = useState<string>('')
@@ -43,7 +43,7 @@ export default function LoginScreen() {
             />
 
             <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-                <Text>{loading ? 'Connexion...' : 'Se connecter'}</Text>
+                <ThemedText>{loading ? 'Connexion...' : 'Se connecter'}</ThemedText>
             </TouchableOpacity>
 
             <Link href='/(auth)/register' style={styles.link}>
