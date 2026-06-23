@@ -23,8 +23,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Calendar',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
+          title: 'layout',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="grid" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="planning"
+        options={{
+          title: 'Planning',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />
         }}
       />
     </Tabs>
