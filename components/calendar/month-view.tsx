@@ -1,19 +1,42 @@
 import { useThemeColor } from '@/hooks/use-theme-color'
+import { useEvents } from '@/src/features/calendar/useEvents'
 import dayjs from '@/src/lib/day'
+import { CalendarEvent } from '@/src/types/events'
 import { useState } from 'react'
-import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native'
 import { ThemedText } from '../themed-text'
 
 
-export function MonthView() {
-  const [selected, setSelected] = useState<number | null>(null)
+interface Props {
+  onSelectDate?: (date: string) => void
+  onLongPressDate?: (date: string, hour: number | null) => void
+  onEventPress?: (event: CalendarEvent) => void
+}
+
+export function MonthView({ onSelectDate, onLongPressDate, onEventPress }: Props) {
+  const { width, height } = useWindowDimensions()
+  const cellSizeWidth = (width - 32) / 7 // 32 = padding horizontal * 2
+  const cellSizeHeight = (height - 32) / 7
+
   const [current, setCurrent] = useState(dayjs())
-  const borderColor = useThemeColor({ light: '#e5e5e5', dark: '#2c2c2e' }, 'text')
+  const [selected, setSelected] = useState<number | null>(null)
+  // const borderColor = useThemeColor({ light: '#e5e5e5', dark: '#2c2c2e' }, 'text')
   const mutedColor = useThemeColor({ light: '#999', dark: '#666' }, 'text')
+
+  const from = current.startOf('month').toISOString()
+  const to = current.endOf('month').toISOString()
+  const { data: events = [] } = useEvents(from, to)
+
+  const eventsByDay = events.reduce((acc, event) => {
+    const day = dayjs(event.start_at).date()
+    if (!acc[day]) acc[day] = []
+    acc[day].push(event)
+    return acc
+  }, {} as Record<number, typeof events>)
 
   const startOfMonth = current.startOf('month')
   const daysInMonth = current.daysInMonth()
-  const startOffset = startOfMonth.isoWeekday() - 1 // lundi = 0
+  const startOffset = startOfMonth.isoWeekday() - 1
 
   const cells = [
     ...Array(startOffset).fill(null),
@@ -22,17 +45,8 @@ export function MonthView() {
 
   const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
-  const selectedDay = (day: number) => {
-      if (day === selected) {
-        setSelected(null)
-        return
-      }
-      setSelected(day)
-  }
-
   return (
     <View style={styles.container}>
-      {/* Navigation */}
       <View style={styles.nav}>
         <TouchableOpacity onPress={() => setCurrent(c => c.subtract(1, 'month'))}>
           <ThemedText style={styles.navBtn}>‹</ThemedText>
@@ -45,35 +59,50 @@ export function MonthView() {
         </TouchableOpacity>
       </View>
 
-      {/* Jours de la semaine */}
       <View style={styles.weekdays}>
         {WEEKDAYS.map((d, i) => (
           <ThemedText key={i} style={[styles.weekday, { color: mutedColor }]}>{d}</ThemedText>
         ))}
       </View>
 
-      {/* Grille */}
       <View style={styles.grid}>
         {cells.map((day, i) => {
           const isToday = day && current.date(day).isSame(dayjs(), 'day')
+          const isSelected = selected === day && !isToday
+
           return (
-            <View key={i} style={styles.cell}>
+            <View key={i} style={[styles.cell, { width: cellSizeWidth, height: cellSizeHeight }]}>
               {day && (
-                <TouchableOpacity
-                  style={[
-                    styles.dayCircle,
-                    isToday && styles.todayCircle,
-                    selected === day && !isToday && styles.selectedCircle,
-                  ]}
-                  onPress={() => selectedDay(day)}
-                >
-                  <ThemedText style={[
-                    styles.dayText,
-                    isToday && styles.todayText,
-                  ]}>
-                    {day}
-                  </ThemedText>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.dayCircle,
+                      isToday && styles.todayCircle,
+                      isSelected && styles.selectedCircle,
+                    ]}
+                    onPress={() => {
+                      const date = current.date(day).format('YYYY-MM-DD')
+                      setSelected(day === selected ? null : day)
+                      onSelectDate?.(date)
+                    }}
+                    onLongPress={() => {
+                      const date = current.date(day).format('YYYY-MM-DD')
+                      onLongPressDate?.(date, null)
+                    }}
+                    delayLongPress={400}
+                  >
+                    <ThemedText style={[styles.dayText, isToday && styles.todayText]}>
+                      {day}
+                    </ThemedText>
+                  </TouchableOpacity>
+                  <View style={styles.dots}>
+                    {eventsByDay[day]?.slice(0, 3).map((e) => (
+                      <TouchableOpacity key={e.id} onPress={() => onEventPress?.(e)}>
+                        <View style={[styles.dot, { backgroundColor: e.color }]} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
               )}
             </View>
           )
@@ -96,9 +125,19 @@ const styles = StyleSheet.create({
   weekdays: { flexDirection: 'row', marginBottom: 8 },
   weekday: { flex: 1, textAlign: 'center', fontSize: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
-  dayCircle: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
+  cell: {
+    alignItems: 'center',
+    paddingTop: 4,
+  },
+  dayCircle: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+  },
   todayCircle: { backgroundColor: '#6366f1' },
+  todayText: { color: '#fff', fontWeight: '700' },
   selectedCircle: {
     borderWidth: 1.5,
     borderColor: '#6366f1',
@@ -106,5 +145,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   dayText: { fontSize: 14 },
-  todayText: { color: '#fff', fontWeight: '600' },
+  dots: { flexDirection: 'row', gap: 2, marginTop: 2 },
+  dot: { width: 4, height: 4, borderRadius: 2 },
 })
