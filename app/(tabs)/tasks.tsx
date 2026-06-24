@@ -25,12 +25,10 @@ function SubTaskItem({ task, subtask, handleToggleTask }: SubTaskProps) {
   const borderColor = useThemeColor({ light: '#e5e5e5', dark: '#2c2c2e' }, 'text')
 
   const handleToggleSubTask = (id: string, is_completed: boolean, type: 'task' | 'subtask') => {
-    if (subtask.is_completed && task.is_completed) {
-      if (subtask.task_id === task.id) {
-        handleToggleTask(task.id, true, 'task')
-      }
+    if (is_completed && task.is_completed) {
+      handleToggleTask(task.id, task.is_completed, 'task')
     }
-    toggle({ id: id, is_completed: is_completed, type: type})
+    toggle({ id, is_completed, type })
   }
 
   return (
@@ -57,14 +55,14 @@ function TaskItem({ task }: { task: Task & { subtasks: SubTask[] } }) {
   const cardBg = useThemeColor({ light: '#f9f9f9', dark: '#1c1c1e' }, 'background')
 
   const handleToggleTask = (id: string, is_completed: boolean, type: 'task' | 'subtask') => {
-    task.subtasks.map((subtask) => {
-      if (!subtask.is_completed) {
-        Alert.alert('Erreur', `Toutes les sous-tâches de ${task.title} doivent être complété`)
+    if (task.subtasks && task.subtasks.length > 0) {
+      const hasIncomplete = task.subtasks.some(s => !s.is_completed)
+      if (hasIncomplete) {
+        Alert.alert('Erreur', `Toutes les sous-tâches de "${task.title}" doivent être complétées`)
         return
-      } else {
-        toggle({ id: id, is_completed: is_completed, type: type })
       }
-    })
+    }
+    toggle({ id, is_completed, type })
   }
 
   return (
