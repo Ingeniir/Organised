@@ -34,6 +34,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />
         }}
       />
+      <Tabs.Screen
+        name="tasks"
+        options={{
+          title: 'Tâches',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="checklist" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
