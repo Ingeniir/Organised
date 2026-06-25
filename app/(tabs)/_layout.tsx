@@ -41,6 +41,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="checklist" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="finance"
+        options={{
+          title: 'Finances',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="creditcard" color={color} />
+        }}
+      />
     </Tabs>
   );
 }
