@@ -1,4 +1,5 @@
 import { useThemeColor } from '@/hooks/use-theme-color'
+import { withOpacity } from '@/src/lib/colors'
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet'
 import { StyleSheet, type TextInputProps } from 'react-native'
 
@@ -27,7 +28,7 @@ export function ThemedBottomSheetInput({
   return (
     <BottomSheetTextInput
       style={[styles.input, { color, backgroundColor, borderColor }, style]}
-      placeholderTextColor={color + '80'}
+      placeholderTextColor={withOpacity(color, 0.5)}
       {...rest}
     />
   )

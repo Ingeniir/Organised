@@ -1,4 +1,3 @@
-import { ThemedInput } from '@/components/themed-input'
 import { ThemedText } from '@/components/themed-text'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useCreateEvent } from '@/src/features/calendar/useEvents'
@@ -7,6 +6,7 @@ import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { forwardRef, useEffect, useState } from 'react'
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { ThemedBottomSheetInput } from '../themed-bottom-sheet-input'
 
 const COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444']
 
@@ -85,12 +85,12 @@ export const EventModal = forwardRef<BottomSheet, Props>(({ selectedDate, select
           Nouvel événement - {dayjs(selectedDate).format('dddd D MMMM YYYY')}
         </ThemedText>
 
-        <ThemedInput
+        <ThemedBottomSheetInput
           placeholder="Titre"
           value={title}
           onChangeText={setTitle}
         />
-        <ThemedInput
+        <ThemedBottomSheetInput
           placeholder="Description (optionnel)"
           value={description}
           onChangeText={setDescription}

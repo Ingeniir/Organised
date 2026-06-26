@@ -5,16 +5,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 // ─── Fetch ───────────────────────────────────────────────────────────────────
 
-const fetchAccounts = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('bank_accounts')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at')
-  if (error) throw error
-  return data as BankAccount[]
-}
-
 const fetchTransactions = async (userId: string, accountId?: string) => {
   let query = supabase
     .from('transactions')

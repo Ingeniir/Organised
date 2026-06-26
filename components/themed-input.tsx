@@ -1,4 +1,5 @@
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { withOpacity } from '@/src/lib/colors';
 import { StyleSheet, TextInput, type TextInputProps } from 'react-native';
 
 export type ThemedInputProps = TextInputProps & {
@@ -26,7 +27,7 @@ export function ThemedInput({
   return (
     <TextInput
       style={[styles.input, { color, backgroundColor, borderColor }, style]}
-      placeholderTextColor={color + '80'}
+      placeholderTextColor={withOpacity(color, 0.5)}
       {...rest}
     />
   );
