@@ -3,13 +3,18 @@ import { useThemeColor } from '@/hooks/use-theme-color'
 import { useDeleteEvent } from '@/src/features/calendar/useEvents'
 import dayjs from '@/src/lib/day'
 import { CalendarEvent } from '@/src/types/events'
+import { ICalEvent } from '@/src/types/ical'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet'
 import { forwardRef } from 'react'
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native'
 
 interface Props {
-  event: CalendarEvent | null
+  event: CalendarEvent | ICalEvent | null
+}
+
+function isICalEvent(event: CalendarEvent | ICalEvent): event is ICalEvent {
+  return 'uid' in event
 }
 
 // eslint-disable-next-line react/display-name
@@ -21,20 +26,25 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
 
   if (!event) return null
 
-  const start = dayjs(event.start_at)
-  const end = dayjs(event.end_at)
+  const ical = isICalEvent(event)
+  const start = dayjs(ical ? event.start : event.start_at)
+  const end = dayjs(ical ? event.end : event.end_at)
   const duration = end.diff(start, 'minute')
   const hours = Math.floor(duration / 60)
   const minutes = duration % 60
+  const color = ical
+    ? event.source === 'L2' ? '#6366f1' : '#10b981'
+    : event.color
 
   const handleDelete = () => {
+    if (ical) return
     Alert.alert('Supprimer', 'Supprimer cet événement ?', [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Supprimer',
         style: 'destructive',
         onPress: () => {
-          deleteEvent(event.id, {
+          deleteEvent((event as CalendarEvent).id, {
             onSuccess: () => (ref as any)?.current?.close(),
           })
         },
@@ -52,25 +62,32 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
       handleIndicatorStyle={{ backgroundColor: handleColor }}
     >
       <BottomSheetView style={styles.container}>
-        {/* Header avec couleur */}
+        {/* Header */}
         <View style={styles.header}>
-          <View style={[styles.colorBar, { backgroundColor: event.color }]} />
+          <View style={[styles.colorBar, { backgroundColor: color }]} />
           <View style={styles.headerText}>
             <ThemedText type="defaultSemiBold" style={styles.title}>
-              {event.title}
+              {ical ? event.title : event.title}
             </ThemedText>
-            {event.description ? (
+            {ical && event.source && (
+              <ThemedText style={[styles.badge, { backgroundColor: color + '20', color }]}>
+                {event.source}
+              </ThemedText>
+            )}
+            {!ical && event.description ? (
               <ThemedText style={[styles.description, { color: mutedColor }]}>
                 {event.description}
               </ThemedText>
             ) : null}
           </View>
-          <TouchableOpacity onPress={handleDelete} disabled={isPending}>
-            <Ionicons name="trash-outline" size={22} color="#ef4444" />
-          </TouchableOpacity>
+          {!ical && (
+            <TouchableOpacity onPress={handleDelete} disabled={isPending}>
+              <Ionicons name="trash-outline" size={22} color="#ef4444" />
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Infos */}
+        {/* Date & heure */}
         <View style={styles.infoRow}>
           <Ionicons name="calendar-outline" size={16} color={mutedColor} />
           <ThemedText style={[styles.infoText, { color: mutedColor }]}>
@@ -86,6 +103,26 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
             {hours > 0 ? `${hours}h` : ''}{minutes > 0 ? `${minutes}min` : ''}
           </ThemedText>
         </View>
+
+        {/* Salle (iCal) */}
+        {ical && event.location && (
+          <View style={styles.infoRow}>
+            <Ionicons name="location-outline" size={16} color={mutedColor} />
+            <ThemedText style={[styles.infoText, { color: mutedColor }]}>
+              {event.location}
+            </ThemedText>
+          </View>
+        )}
+
+        {/* Prof (iCal) */}
+        {ical && event.prof && (
+          <View style={styles.infoRow}>
+            <Ionicons name="person-outline" size={16} color={mutedColor} />
+            <ThemedText style={[styles.infoText, { color: mutedColor }]}>
+              {event.prof}
+            </ThemedText>
+          </View>
+        )}
       </BottomSheetView>
     </BottomSheet>
   )
@@ -98,6 +135,15 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, gap: 4 },
   title: { fontSize: 18 },
   description: { fontSize: 14 },
+  badge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    overflow: 'hidden',
+  },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   infoText: { fontSize: 14 },
 })

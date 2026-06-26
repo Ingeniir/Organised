@@ -5,24 +5,43 @@ import { WeekView } from '@/components/calendar/week-view'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
 import { useThemeColor } from '@/hooks/use-theme-color'
+import { useICalEvents } from '@/src/features/ical/useICalEvents'
+import { useSettingsStore } from '@/src/stores/settingsStore'
 import { CalendarEvent } from '@/src/types/events'
+import { ICalEvent } from '@/src/types/ical'
 import BottomSheet from '@gorhom/bottom-sheet'
-import { useRef, useState } from 'react'
-import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import dayjs from 'dayjs'
+import { useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type ViewMode = 'week' | 'month'
 
 export default function PlanningScreen() {
   const [mode, setMode] = useState<ViewMode>('week')
+  const [icalRange, setIcalRange] = useState({
+    firstDate: dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'),
+    lastDate: dayjs().add(1, 'month').endOf('month').format('YYYY-MM-DD'),
+  })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedHour, setSelectedHour] = useState<number | null>(null)
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | ICalEvent | null>(null)
   const detailsSheetRef = useRef<BottomSheet>(null)
   const bottomSheetRef = useRef<BottomSheet>(null)
   const insets = useSafeAreaInsets()
   const activeBg = useThemeColor({ light: '#6366f1', dark: '#6366f1' }, 'text')
   const inactiveBg = useThemeColor({ light: '#f0f0f0', dark: '#2c2c2e' }, 'text')
+
+  const { showICalL2, showICalL3, toggleICalL } = useSettingsStore()
+  const { data: icalL2 = [], isLoading: loadingL2 } = useICalEvents('L2', icalRange.firstDate, icalRange.lastDate, showICalL2)
+  const { data: icalL3 = [], isLoading: loadingL3 } = useICalEvents('L3', icalRange.firstDate, icalRange.lastDate, showICalL3)
+
+  const isLoading = loadingL2 || loadingL3
+
+  const icalEvents = useMemo(() => [
+    ...(showICalL2 ? icalL2 : []),
+    ...(showICalL3 ? icalL3 : []),
+  ], [showICalL2, showICalL3, icalL2, icalL3])
 
   const handleLongPress = (date: string, hour: number | null) => {
     setSelectedDate(date)
@@ -35,11 +54,31 @@ export default function PlanningScreen() {
     detailsSheetRef.current?.expand()
   }
 
+  const handleICalEventPress = (event: ICalEvent) => {
+    setSelectedEvent(event)
+    detailsSheetRef.current?.expand()
+  }
+
   return (
     <ThemedView style={{ flex: 1 }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <ThemedText type="defaultSemiBold">Planning</ThemedText>
+        <View style={styles.topbarLeft}>
+          <ThemedText type="defaultSemiBold">Planning</ThemedText>
+          {isLoading && (
+            <ActivityIndicator size="small" color="#6366f1" />
+          )}
+        </View>
         <View style={styles.topbarRight}>
+          {mode === 'week' && (
+            <TouchableOpacity
+              style={[styles.icalBtn, { backgroundColor: showICalL3 ? '#10b98120' : '#6366f140' }]}
+              onPress={toggleICalL}
+            >
+              <ThemedText style={[styles.icalBtnText]}>
+                {showICalL2 ? "L2" : "L3"}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
           {/* Toggle semaine/mois */}
           <View style={[styles.toggle, { backgroundColor: inactiveBg }]}>
             {(['week', 'month'] as ViewMode[]).map((m) => (
@@ -61,6 +100,9 @@ export default function PlanningScreen() {
         ? <WeekView 
             onLongPressDate={handleLongPress}
             onEventPress={handleEventPress}
+            onIcalEventPress={handleICalEventPress}
+            icalEvents={icalEvents}
+            onRangeChange={(firstDate, lastDate) => setIcalRange({ firstDate, lastDate })}
           /> 
         : <MonthView 
             onSelectDate={setSelectedDate} 
@@ -96,5 +138,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   toggleText: { fontSize: 13, fontWeight: '500' },
-  topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 12},
+  topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 8},
+  topbarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8},
+  icalBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  icalBtnText: { fontSize: 12, fontWeight: '600' },
 })
