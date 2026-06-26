@@ -95,7 +95,16 @@ function TaskItem({ task }: { task: Task & { subtasks: SubTask[] } }) {
           </View>
         </View>
 
-        <TouchableOpacity onPress={() => remove(task.id)}>
+        <TouchableOpacity onPress={() => {
+          Alert.alert(
+            'Supprimer',
+            `Supprimer "${task.title}"`,
+            [
+              { text: 'Annuler', style: 'cancel' },
+              { text: 'Supprimer', style: 'destructive', onPress: () => remove(task.id) },
+            ]
+          )
+        }}>
           <Ionicons name="trash-outline" size={18} color="#ef4444" />
         </TouchableOpacity>
       </View>
