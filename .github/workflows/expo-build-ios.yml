@@ -11,11 +11,10 @@ jobs:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      # 🛠️ ÉTAPE FIX : Installer PNPM avant de configurer Node
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
-          version: latest # Tu peux remplacer par ta version exacte (ex: 9) si besoin
+          version: 9 # Fix: Version 9 pour assurer la compatibilité avec Node 20
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -33,7 +32,7 @@ jobs:
         run: |
           cd ios
 
-          # 🛠️ ÉTAPE FIX : On extrait le vrai nom du projet plutôt que le nom du dossier "ios"
+          # Fix: Détection dynamique du nom du projet Expo
           SCHEME_NAME=$(basename *.xcworkspace .xcworkspace)
 
           xcodebuild \
