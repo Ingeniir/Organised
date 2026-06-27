@@ -1,0 +1,51 @@
+name: Build iOS (Unsigned for AltStore)
+
+on:
+  workflow_dispatch: # Déclenchement manuel uniquement
+
+jobs:
+  build:
+    runs-on: macos-latest # Utilise le macOS runner de GitHub (gratuit pour publics repos)
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Prébuilder le projet natif (Expo)
+        run: npx expo prebuild --platform ios --clean # Génère le dossier ios/
+
+      - name: Construire l'app iOS (SANS signature)
+        # Note: On utilise xcodebuild directement pour contrôler la signature
+        run: |
+          cd ios
+          xcodebuild \
+            -workspace *.xcworkspace \
+            -scheme $(basename "$PWD" .xcworkspace) \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO  # ← Critical: désactive la signature Apple
+
+          # Localise le .app généré
+          APP_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
+          echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
+
+      - name: Empaqueter le .app en .ipa non signé
+        run: |
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r app-unsigned.ipa Payload
+
+      - name: Publier le .ipa en artifact téléchargeable
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-unsigned-ipa
+          path: app-unsigned.ipa
