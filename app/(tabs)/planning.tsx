@@ -6,13 +6,14 @@ import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useICalEvents } from '@/src/features/ical/useICalEvents'
+import { scheduleICalNotifications } from '@/src/features/notifications/useNotifications'
 import { useSettingsStore } from '@/src/stores/settingsStore'
 import { useToastStore } from '@/src/stores/toastStore'
 import { CalendarEvent } from '@/src/types/events'
 import { ICalEvent } from '@/src/types/ical'
 import BottomSheet from '@gorhom/bottom-sheet'
 import dayjs from 'dayjs'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -44,6 +45,12 @@ export default function PlanningScreen() {
     ...(showICalL2 ? icalL2 : []),
     ...(showICalL3 ? icalL3 : []),
   ], [showICalL2, showICalL3, icalL2, icalL3])
+
+  useEffect(() => {
+    if (icalEvents.length > 0) {
+      scheduleICalNotifications(icalEvents)
+    }
+  }, [icalEvents])
 
   const handleLongPress = (date: string, hour: number | null) => {
     setSelectedDate(date)

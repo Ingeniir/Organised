@@ -7,10 +7,12 @@ import { ThemedView } from '@/components/themed-view'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useDeleteTask, useTasks, useToggleTask } from '@/src/features/tasks/useTasks'
 import { SubTask, Task } from '@/src/types/tasks'
+import { scheduleTaskNotifications, cancelTaskNotifications } from '@/src/features/notifications/useNotifications'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import BottomSheet from '@gorhom/bottom-sheet'
 import { useRef } from 'react'
 import { Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { useEffect } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface SubTaskProps {
@@ -127,6 +129,12 @@ export default function TasksScreen() {
   const { data: tasks = [], isLoading } = useTasks()
   const insets = useSafeAreaInsets()
   const bottomSheetRef = useRef<BottomSheet>(null)
+
+  useEffect(() => {
+    if (tasks.length > 0) {
+      scheduleTaskNotifications(tasks)
+    }
+  }, [tasks])
 
   const handleNewTask = () => {
     bottomSheetRef.current?.expand()

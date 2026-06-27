@@ -1,6 +1,7 @@
 import { ToastContainer } from "@/components/toast";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthStore } from "@/src/features/auth/authStore";
+import { requestNotificationPermission } from "@/src/features/notifications/useNotifications";
 import { queryClient } from "@/src/lib/queryClient";
 import { supabase } from "@/src/lib/supabase";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
@@ -23,6 +24,7 @@ export default function RootLayout() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setInitialized(true)
+      requestNotificationPermission()
     })
 
     const { data: { subscription }} = supabase.auth.onAuthStateChange((_event, session) => {
