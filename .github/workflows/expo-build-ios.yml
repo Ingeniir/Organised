@@ -1,74 +1,68 @@
-name: Build iOS (Unsigned for AltStore)
+name: Build iOS (non signé)
 
+# Déclenchement manuel uniquement, pour ne pas consommer de minutes macOS
 on:
-  workflow_dispatch: # Déclenchement manuel uniquement
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-latest # Utilise le macOS runner de GitHub
+    runs-on: macos-latest
 
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      - name: Setup PNPM
+      # Installer PNPM (v9 pour rester compatible avec Node 20)
+      - name: Installer PNPM
         uses: pnpm/action-setup@v4
         with:
-          version: 9 # Version 9 pour assurer la compatibilité avec Node 20
+          version: 9
 
-      # 🛠️ FIX : On récupère dynamiquement le chemin du store PNPM pour le cache
-      - name: Obtenir le chemin du store PNPM
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      # 🛠️ FIX : On gère le cache de manière isolée et robuste
-      - name: Configurer le cache PNPM
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Setup Node
+      # Installer Node.js
+      - name: Installer Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          # On a retiré cache: "pnpm" d'ici pour éviter le bug du store invisible
 
-      - name: Installer les dépendances
+      # Récupérer les dépendances du projet (sans cache pour éviter les conflits)
+      - name: Récupérer les dépendances du projet
         run: pnpm install --frozen-lockfile
 
+      # Générer le dossier natif /ios (Équivalent du "flutter pub get" qui prépare le terrain)
       - name: Prébuilder le projet natif (Expo)
-        run: npx expo prebuild --platform ios --clean # Génère le dossier ios/
+        run: npx expo prebuild --platform ios --clean
 
-      - name: Construire l'app iOS (SANS signature)
+      # Compiler l'app iOS (sans signature)
+      - name: Compiler l'app iOS (sans signature)
         run: |
           cd ios
 
-          # Détection dynamique du nom du projet Expo
-          SCHEME_NAME=$(basename *.xcworkspace .xcworkspace)
+          # Trouver automatiquement le nom du workspace créé par Expo
+          WORKSPACE_NAME=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME_NAME=$(basename "$WORKSPACE_NAME" .xcworkspace)
 
           xcodebuild \
-            -workspace *.xcworkspace \
+            -workspace "$WORKSPACE_NAME" \
             -scheme "$SCHEME_NAME" \
             -configuration Release \
             -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
 
-          # Localise le .app généré
-          APP_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
-          echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
+          # Sauvegarder le chemin absolu du fichier .app généré
+          RELATIVE_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
+          echo "FINAL_APP_PATH=$PWD/$RELATIVE_PATH" >> $GITHUB_ENV
 
-      - name: Empaqueter le .app en .ipa non signé
+      # Empaqueter le .app en .ipa (Exactement comme sur ton script Flutter)
+      - name: Empaqueter le .app en .ipa
         run: |
           mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
+          cp -r "${{ env.FINAL_APP_PATH }}" Payload/
           zip -r app-unsigned.ipa Payload
 
+      # Publier le .ipa en artifact téléchargeable
       - name: Publier le .ipa en artifact téléchargeable
         uses: actions/upload-artifact@v4
         with:
-          name: expo-unsigned-ipa
+          name: app-unsigned-ipa
           path: app-unsigned.ipa
