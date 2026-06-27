@@ -5,11 +5,17 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest # Utilise le macOS runner de GitHub (gratuit pour publics repos)
+    runs-on: macos-latest # Utilise le macOS runner de GitHub
 
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
+
+      # 🛠️ ÉTAPE FIX : Installer PNPM avant de configurer Node
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest # Tu peux remplacer par ta version exacte (ex: 9) si besoin
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -24,15 +30,18 @@ jobs:
         run: npx expo prebuild --platform ios --clean # Génère le dossier ios/
 
       - name: Construire l'app iOS (SANS signature)
-        # Note: On utilise xcodebuild directement pour contrôler la signature
         run: |
           cd ios
+
+          # 🛠️ ÉTAPE FIX : On extrait le vrai nom du projet plutôt que le nom du dossier "ios"
+          SCHEME_NAME=$(basename *.xcworkspace .xcworkspace)
+
           xcodebuild \
             -workspace *.xcworkspace \
-            -scheme $(basename "$PWD" .xcworkspace) \
+            -scheme "$SCHEME_NAME" \
             -configuration Release \
             -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO  # ← Critical: désactive la signature Apple
+            CODE_SIGNING_ALLOWED=NO
 
           # Localise le .app généré
           APP_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
