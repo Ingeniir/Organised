@@ -1,3 +1,4 @@
+import { ToastContainer } from "@/components/toast";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthStore } from "@/src/features/auth/authStore";
 import { queryClient } from "@/src/lib/queryClient";
@@ -51,6 +52,7 @@ export default function RootLayout() {
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Slot />
         </ThemeProvider>
+        <ToastContainer />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -1,14 +1,16 @@
+import { HOLIDAYS } from '@/constants/holidays'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { Palette } from '@/src/constants/colors'
 import { useEvents } from '@/src/features/calendar/useEvents'
 import dayjs from '@/src/lib/day'
+import { useSettingsStore } from '@/src/stores/settingsStore'
 import { CalendarEvent } from '@/src/types/events'
 import { ICalEvent } from '@/src/types/ical'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Dimensions, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { ThemedText } from '../themed-text'
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i)
+const HOURS = Array.from({ length: 24 }, (_, i) => i + 1)
 const SCREEN_WIDTH = Dimensions.get('window').width
 const ROW_HEIGHT = 56 
 const DEFAULT_SCROLL_Y = 7 * ROW_HEIGHT 
@@ -24,6 +26,7 @@ interface Props {
 export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIcalEventPress, onRangeChange }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0)
+  const { showIcal } = useSettingsStore()
   
   const flatListRef = useRef<FlatList>(null)
   const scrollRefs = useRef<Record<number, ScrollView | null>>({})
@@ -131,21 +134,36 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                   const dateStr = day.format('YYYY-MM-DD')
                   const isToday = dayjs().isSame(day, 'day')
                   const isSelected = selected === dateStr && !isToday
+                  const isWeekend = day.isoWeekday() >= 6
+                  const holiday = HOLIDAYS[dateStr]
+                  const isSpecial = isWeekend || !!holiday
+
                   return (
                     <TouchableOpacity
                       key={`${weekOffset}-${dateStr}`}
-                      style={styles.dayHeader}
+                      style={[
+                        styles.dayHeader,
+                      ]}
                       onPress={() => setSelected(dateStr)}
                     >
-                      <ThemedText style={[styles.dayName, { color: mutedColor }]}>
-                        {day.format('ddd')}
+                      <ThemedText style={[
+                        styles.dayName,
+                        { color: isSpecial ? (holiday ? '#f59e0b' : mutedColor) : mutedColor }
+                      ]}>
+                        {holiday ? holiday.slice(0, 6) : day.format('ddd')}
                       </ThemedText>
                       <View style={[
                         styles.dayCircle,
                         isToday && styles.todayCircle,
                         isSelected && styles.selectedCircle,
+                        isWeekend && !isToday && { backgroundColor: '#6366f110' },
                       ]}>
-                        <ThemedText style={[styles.dayNumber, isToday && styles.todayText]}>
+                        <ThemedText style={[
+                          styles.dayNumber,
+                          isToday && styles.todayText,
+                          isWeekend && !isToday && { color: mutedColor },
+                          holiday && !isToday && { color: '#f59e0b' },
+                        ]}>
                           {day.format('D')}
                         </ThemedText>
                       </View>
@@ -175,21 +193,28 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                 {HOURS.map((hour) => (
                   <View key={`${weekOffset}-${hour}`} style={[styles.hourRow, { borderTopColor: borderColor }]}>
                     <ThemedText style={[styles.hourLabel, { color: mutedColor }]}>
-                      {hour === 0 ? '' : `${hour}h`}
+                      {`${hour}h`}
                     </ThemedText>
                     {days.map((day) => {
                       const dateStr = day.format('YYYY-MM-DD')
                       const cellKey = `${dateStr}-${hour}`
                       const cellData = indexedEvents[cellKey] || { local: [], ical: [] }
+                      const isWeekend = day.isoWeekday() >= 6
+                      const holiday = HOLIDAYS[dateStr]
 
                       return (
                         <TouchableOpacity
-                          key={`${weekOffset}-${hour}-${dateStr}`}
-                          style={[styles.cell, { borderLeftColor: borderColor }]}
-                          onLongPress={() => onLongPressDate?.(dateStr, hour)}
-                          delayLongPress={400}
-                          activeOpacity={1}
-                        >
+                            key={`${weekOffset}-${hour}-${dateStr}`}
+                            style={[
+                              styles.cell,
+                              { borderLeftColor: borderColor },
+                              isWeekend && { backgroundColor: '#6366f108' },
+                              HOLIDAYS[dateStr] && { backgroundColor: '#f59e0b08' },
+                            ]}
+                            onLongPress={() => onLongPressDate?.(dateStr, hour)}
+                            delayLongPress={400}
+                            activeOpacity={1}
+                          >
                           {cellData.local.map(e => (
                             <TouchableOpacity
                               key={`${weekOffset}-${e.id}`}
@@ -202,29 +227,29 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                             </TouchableOpacity>
                           ))}
                           
-                          {cellData.ical.map(e => (
+                          {showIcal === true && cellData.ical.map(e => (
                             <TouchableOpacity
                               key={`${weekOffset}-${hour}-${dateStr}-${e.uid}`}
                               style={[styles.eventBlock, {
-                                backgroundColor: e.source === 'L2' ? '#6366f133' : '#10b98133'
+                                backgroundColor: '#10b98133'
                               }]}
                               onPress={() => onIcalEventPress?.(e)}
                             >
                               <ThemedText
                                 style={[styles.eventTitle, {
-                                  color: e.source === 'L2' ? '#6366f1' : '#10b981'
+                                  color: '#10b981'
                                 }]}
                                 numberOfLines={1}
                               >
                                 {e.title}
                               </ThemedText>
                               {e.location && (
-                                <ThemedText style={[styles.eventMeta, { color: e.source === 'L2' ? '#6366f1' : '#10b981' }]} numberOfLines={1}>
+                                <ThemedText style={[styles.eventMeta, { color: '#10b981' }]} numberOfLines={1}>
                                   📍 {e.location}
                                 </ThemedText>
                               )}
                               {e.prof && (
-                                <ThemedText style={[styles.eventMeta, { color: e.source === 'L2' ? '#6366f1' : '#10b981' }]} numberOfLines={1}>
+                                <ThemedText style={[styles.eventMeta, { color: '#10b981' }]} numberOfLines={1}>
                                   👤 {e.prof}
                                 </ThemedText>
                               )}
@@ -262,7 +287,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 16,
   },
-  todayCircle: { backgroundColor: Palette.primary.light },
+  todayCircle: { backgroundColor: "#10b981ee" },
   todayText: { color: '#fff', fontWeight: '700' },
   selectedCircle: {
     borderWidth: 1.5,
@@ -280,7 +305,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'right',
     paddingRight: 8,
-    marginTop: -8,
+    lineHeight: 14,
   },
   cell: {
     flex: 1,
@@ -294,4 +319,8 @@ const styles = StyleSheet.create({
   },
   eventTitle: { fontSize: 10, fontWeight: '500' },
   eventMeta: { fontSize: 8, opacity: 0.8 },
+  holidayLabel: {
+    fontSize: 9,
+    textAlign: 'center',
+  },
 })

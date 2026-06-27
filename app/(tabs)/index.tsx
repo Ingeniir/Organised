@@ -1,5 +1,7 @@
 import { CalendarPreview } from '@/components/dashboard/calendar-preview'
+import { FinancePreview } from '@/components/dashboard/finance-preview'
 import { TasksPreview } from '@/components/dashboard/tasks-preview'
+import { WeekPreview } from '@/components/dashboard/week-preview'
 import { ThemedIcon } from '@/components/themed-icon'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
@@ -11,26 +13,8 @@ import { useState } from 'react'
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const MODULES = [
-  {
-    id: 'planning',
-    label: 'Planning',
-    icon: 'calendar-outline',
-    color: '#6366f1',
-    route: '/(tabs)/planning',
-  },
-  {
-    id: 'tasks',
-    label: 'Tâches',
-    icon: 'checkmark-circle-outline',
-    color: '#10b981',
-    route: '/(tabs)/tasks',
-  },
-] as const
-
 export default function DashboardScreen() {
-  const [cardWidth, setCardWidth] = useState<number>(0)
-
+  const [cardWidth, setCardWidth] = useState(0)
   const { user } = useAuthStore()
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -55,20 +39,38 @@ export default function DashboardScreen() {
           style={styles.row}
           onLayout={e => setCardWidth((e.nativeEvent.layout.width - 12) / 2)}
         >
+          {/* Planning mois */}
           <TouchableOpacity
             style={[styles.card, { width: cardWidth, backgroundColor: cardBg }]}
             onPress={() => router.push('/(tabs)/planning')}
           >
             {cardWidth > 0 && <CalendarPreview width={cardWidth} height={cardWidth} />}
-            <ThemedText type="defaultSemiBold" style={styles.cardLabel}>Planning</ThemedText>
           </TouchableOpacity>
 
+          {/* Semaine */}
+          <TouchableOpacity
+            style={[styles.card, { width: cardWidth, height: '100%', backgroundColor: cardBg }]}
+            onPress={() => router.push('/(tabs)/planning')}
+          >
+            {cardWidth > 0 && <WeekPreview width={cardWidth} height={cardWidth} />}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.row}>
+          {/* Tâches */}
           <TouchableOpacity
             style={[styles.card, { width: cardWidth, backgroundColor: cardBg }]}
             onPress={() => router.push('/(tabs)/tasks')}
           >
             {cardWidth > 0 && <TasksPreview width={cardWidth} height={cardWidth} />}
-            <ThemedText type="defaultSemiBold" style={styles.cardLabel}>Tâches</ThemedText>
+          </TouchableOpacity>
+
+          {/* Finances */}
+          <TouchableOpacity
+            style={[styles.card, { width: cardWidth, backgroundColor: cardBg }]}
+            onPress={() => router.push('/(tabs)/finance')}
+          >
+            {cardWidth > 0 && <FinancePreview width={cardWidth} height={cardWidth} />}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -85,19 +87,8 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   name: { fontSize: 24 },
-  grid: {
-    padding: 16
-  },
-  card: {
-    borderRadius: 16, overflow: 'hidden'
-  },
+  grid: { padding: 16, gap: 12 },
   row: { flexDirection: 'row', gap: 12 },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  card: { borderRadius: 16, overflow: 'hidden' },
   cardLabel: { fontSize: 14, padding: 12, paddingTop: 8 },
 })

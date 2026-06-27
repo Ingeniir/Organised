@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/themed-view'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useICalEvents } from '@/src/features/ical/useICalEvents'
 import { useSettingsStore } from '@/src/stores/settingsStore'
+import { useToastStore } from '@/src/stores/toastStore'
 import { CalendarEvent } from '@/src/types/events'
 import { ICalEvent } from '@/src/types/ical'
 import BottomSheet from '@gorhom/bottom-sheet'
@@ -29,10 +30,11 @@ export default function PlanningScreen() {
   const detailsSheetRef = useRef<BottomSheet>(null)
   const bottomSheetRef = useRef<BottomSheet>(null)
   const insets = useSafeAreaInsets()
-  const activeBg = useThemeColor({ light: '#6366f1', dark: '#6366f1' }, 'text')
+  const activeBg = useThemeColor({ light: '#10b981ee', dark: '#6366f1ee' }, 'text')
   const inactiveBg = useThemeColor({ light: '#f0f0f0', dark: '#2c2c2e' }, 'text')
 
-  const { showICalL2, showICalL3, toggleICalL } = useSettingsStore()
+  const { showICalL2, showICalL3, toggleICalL, showIcal, onShowICal } = useSettingsStore()
+  const toast = useToastStore()
   const { data: icalL2 = [], isLoading: loadingL2 } = useICalEvents('L2', icalRange.firstDate, icalRange.lastDate, showICalL2)
   const { data: icalL3 = [], isLoading: loadingL3 } = useICalEvents('L3', icalRange.firstDate, icalRange.lastDate, showICalL3)
 
@@ -71,8 +73,18 @@ export default function PlanningScreen() {
         <View style={styles.topbarRight}>
           {mode === 'week' && (
             <TouchableOpacity
-              style={[styles.icalBtn, { backgroundColor: showICalL3 ? '#10b98120' : '#6366f140' }]}
-              onPress={toggleICalL}
+              style={[styles.icalBtn, { backgroundColor: showIcal ? '#10b98120' : '#6f6d6d' }]}
+              onPress={() => {
+                toggleICalL()
+                toast.show({
+                  variant: 'message',
+                  icon: 'school',
+                  message: `Affichage ${showICalL2 ? 'L3' : 'L2'}`,
+                  duration: 2000,
+                })
+              }}
+              onLongPress={() => onShowICal()}
+              delayLongPress={200}
             >
               <ThemedText style={[styles.icalBtnText]}>
                 {showICalL2 ? "L2" : "L3"}
@@ -84,8 +96,15 @@ export default function PlanningScreen() {
             {(['week', 'month'] as ViewMode[]).map((m) => (
               <TouchableOpacity
                 key={m}
-                style={[styles.toggleBtn, mode === m && { backgroundColor: activeBg }]}
-                onPress={() => setMode(m)}
+                style={[styles.toggleBtn, mode === m && { backgroundColor: "#10b98188" }]}
+                onPress={() => {
+                  setMode(m)
+                  toast.show({
+                    variant: 'message',
+                    icon: 'calendar-month',
+                    message: `Affichage mode ${m === 'week' ? 'Semaine' : 'Mois'}`
+                  })
+                }}
               >
                 <ThemedText style={[styles.toggleText, mode === m && { color: '#fff' }]}>
                   {m === 'week' ? 'Semaine' : 'Mois'}
