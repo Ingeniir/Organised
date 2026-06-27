@@ -14,13 +14,28 @@ jobs:
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
-          version: 9 # Fix: Version 9 pour assurer la compatibilité avec Node 20
+          version: 9 # Version 9 pour assurer la compatibilité avec Node 20
+
+      # 🛠️ FIX : On récupère dynamiquement le chemin du store PNPM pour le cache
+      - name: Obtenir le chemin du store PNPM
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      # 🛠️ FIX : On gère le cache de manière isolée et robuste
+      - name: Configurer le cache PNPM
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
+          # On a retiré cache: "pnpm" d'ici pour éviter le bug du store invisible
 
       - name: Installer les dépendances
         run: pnpm install --frozen-lockfile
@@ -32,7 +47,7 @@ jobs:
         run: |
           cd ios
 
-          # Fix: Détection dynamique du nom du projet Expo
+          # Détection dynamique du nom du projet Expo
           SCHEME_NAME=$(basename *.xcworkspace .xcworkspace)
 
           xcodebuild \
