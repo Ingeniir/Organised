@@ -29,9 +29,9 @@ export const TransactionModal = forwardRef<BottomSheet, {}>((_, ref) => {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('Autre')
   const [description, setDescription] = useState('')
-  const [accountId, setAccountId] = useState<string | null>(null)
 
   const { data: accounts = [] } = useBankAccounts()
+  const [accountId, setAccountId] = useState<string | null>(accounts[0].id)
   const { mutate: createTransaction, isPending } = useCreateTransaction()
 
   const bg = useThemeColor({ light: '#ffffff', dark: '#1c1c1e' }, 'background')
@@ -59,6 +59,8 @@ export const TransactionModal = forwardRef<BottomSheet, {}>((_, ref) => {
     if (!accountId) {
       return Alert.alert('Erreur', 'Sélectionne un compte')
     }
+
+    console.log('Montant: ', amount)
 
     createTransaction(
       {

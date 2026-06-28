@@ -4,12 +4,13 @@ import { ThemedText } from '@/components/themed-text'
 import { ThemedTouchable } from '@/components/themed-touchable'
 import { ThemedView } from '@/components/themed-view'
 import { useThemeColor } from '@/hooks/use-theme-color'
-import { useBankAccounts, useTransactions } from '@/src/features/finance/useFinance'
+import { useBankAccounts, useDeleteTransaction, useTransactions } from '@/src/features/finance/useFinance'
 import dayjs from '@/src/lib/day'
+import { useToastStore } from '@/src/stores/toastStore'
 import { Transaction } from '@/src/types/finance'
 import BottomSheet from '@gorhom/bottom-sheet'
 import { useRef } from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -32,34 +33,71 @@ function TransactionBadge({ transaction }: { transaction: Transaction }) {
   const isTransfer = transaction.type === 'transfer'
   const amountColor = isIncome ? '#10b981' : isTransfer ? '#6366f1' : '#ef4444'
   const icon = CATEGORY_ICONS[transaction.category] ?? 'ellipse-outline'
+  const { mutate: deleteTransaction, isPending } = useDeleteTransaction()
+  const toast = useToastStore();
+  const { data: accounts = [] } = useBankAccounts()
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Supprimer la transaction',
+      'Êtes-vous sûr de vouloir supprimer cette transaction ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => {
+            deleteTransaction(transaction.id, {
+              onSuccess: () => {
+                toast.show({
+                  variant: 'message',
+                  icon: 'wallet',
+                  message: `-${Number(transaction.amount).toFixed(2)}€`
+                })
+              },
+              onError: (error) => {
+                Alert.alert('Erreur', 'Impossible de supprimer la transaction')
+              }
+            })
+          },
+        },
+      ]
+    )
+  }
 
   return (
-    <View style={[styles.badge, { backgroundColor: cardBg }]}>
-      <View style={[styles.badgeIcon, { backgroundColor: amountColor + '20' }]}>
-        <ThemedIcon
-          name={icon as any}
-          size={18}
-          lightColor={amountColor}
-          darkColor={amountColor}
-        />
-      </View>
-      <View style={styles.badgeContent}>
-        <ThemedText style={styles.badgeCategory}>{transaction.category}</ThemedText>
-        {transaction.description && (
-          <ThemedText style={[styles.badgeDesc, { color: mutedColor }]} numberOfLines={1}>
-            {transaction.description}
+    <TouchableOpacity
+      onLongPress={handleDelete}
+      delayLongPress={400}
+      disabled={isPending}
+    >
+      <View style={[styles.badge, { backgroundColor: cardBg }]}>
+        <View style={[styles.badgeIcon, { backgroundColor: amountColor + '20' }]}>
+          <ThemedIcon
+            name={icon as any}
+            size={18}
+            lightColor={amountColor}
+            darkColor={amountColor}
+          />
+        </View>
+        <View style={styles.badgeContent}>
+          <ThemedText style={styles.badgeCategory}>{transaction.category}</ThemedText>
+          {transaction.description && (
+            <ThemedText style={[styles.badgeDesc, { color: mutedColor }]} numberOfLines={1}>
+              {transaction.description}
+            </ThemedText>
+          )}
+        </View>
+        <View style={styles.badgeRight}>
+          <ThemedText style={[styles.badgeAmount, { color: amountColor }]}>
+            {isIncome ? '+' : isTransfer ? '↔' : '-'}{Math.abs(transaction.account_id === accounts[1].id ? transaction.amount * 2 : transaction.amount).toFixed(2)}€
           </ThemedText>
-        )}
+          <ThemedText style={[styles.badgeDate, { color: mutedColor }]}>
+            {dayjs(transaction.created_at).format('D MMM')}
+          </ThemedText>
+        </View>
       </View>
-      <View style={styles.badgeRight}>
-        <ThemedText style={[styles.badgeAmount, { color: amountColor }]}>
-          {isIncome ? '+' : isTransfer ? '↔' : '-'}{Math.abs(transaction.amount).toFixed(2)}€
-        </ThemedText>
-        <ThemedText style={[styles.badgeDate, { color: mutedColor }]}>
-          {dayjs(transaction.created_at).format('D MMM')}
-        </ThemedText>
-      </View>
-    </View>
+    </TouchableOpacity>
   )
 }
 
@@ -81,7 +119,7 @@ export default function FinanceScreen() {
 
   const totalIncome = transactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + Number(t.amount), 0)
+    .reduce((sum, t) => sum + (t.account_id === accounts[1].id ? Number(t.amount) * 2 : Number(t.amount)), 0)
 
   return (
     <ThemedView style={{ flex: 1 }}>
