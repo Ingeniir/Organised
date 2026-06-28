@@ -1,6 +1,5 @@
 name: Build iOS (non signé)
 
-# Déclenchement manuel uniquement, pour ne pas consommer de minutes macOS
 on:
   workflow_dispatch:
 
@@ -12,57 +11,52 @@ jobs:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      # Installer PNPM (v9 pour rester compatible avec Node 20)
-      - name: Installer PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      # Installer Node.js
       - name: Installer Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      # Récupérer les dépendances du projet (sans cache pour éviter les conflits)
-      - name: Récupérer les dépendances du projet
-        run: pnpm install --frozen-lockfile
+      - name: Installer Bun
+        uses: oven-sh/setup-bun@v2
 
-      # Générer le dossier natif /ios (Équivalent du "flutter pub get" qui prépare le terrain)
-      - name: Prébuilder le projet natif (Expo)
-        run: npx expo prebuild --platform ios --clean
+      - name: Créer .env.local
+        run: |
+          echo "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" >> .env.local
+          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" >> .env.local
 
-      # Compiler l'app iOS (sans signature)
-      - name: Compiler l'app iOS (sans signature)
+      - name: Installer les dépendances
+        run: bun install
+
+      - name: Générer le projet iOS natif
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Installer les pods CocoaPods
         run: |
           cd ios
+          pod install
 
-          # Trouver automatiquement le nom du workspace créé par Expo
-          WORKSPACE_NAME=$(ls -d *.xcworkspace | head -n 1)
-          SCHEME_NAME=$(basename "$WORKSPACE_NAME" .xcworkspace)
-
+      - name: Compiler l'app iOS (sans signature)
+        run: |
           xcodebuild \
-            -workspace "$WORKSPACE_NAME" \
-            -scheme "$SCHEME_NAME" \
+            -workspace ios/organised.xcworkspace \
+            -scheme organised \
             -configuration Release \
-            -derivedDataPath build \
+            -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/organised.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            archive
 
-          # Sauvegarder le chemin absolu du fichier .app généré
-          RELATIVE_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
-          echo "FINAL_APP_PATH=$PWD/$RELATIVE_PATH" >> $GITHUB_ENV
-
-      # Empaqueter le .app en .ipa (Exactement comme sur ton script Flutter)
-      - name: Empaqueter le .app en .ipa
+      - name: Empaqueter en .ipa
         run: |
           mkdir -p Payload
-          cp -r "${{ env.FINAL_APP_PATH }}" Payload/
+          cp -r $RUNNER_TEMP/organised.xcarchive/Products/Applications/*.app Payload/
           zip -r app-unsigned.ipa Payload
 
-      # Publier le .ipa en artifact téléchargeable
-      - name: Publier le .ipa en artifact téléchargeable
+      - name: Publier le .ipa en artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-unsigned-ipa
           path: app-unsigned.ipa
+          retention-days: 7
