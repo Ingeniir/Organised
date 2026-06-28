@@ -2,6 +2,7 @@ import { HOLIDAYS } from '@/constants/holidays'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { Palette } from '@/src/constants/colors'
 import { useEvents } from '@/src/features/calendar/useEvents'
+import { extractProf } from '@/src/features/ical/parser'
 import dayjs from '@/src/lib/day'
 import { useSettingsStore } from '@/src/stores/settingsStore'
 import { CalendarEvent } from '@/src/types/events'
@@ -45,7 +46,7 @@ const getEventColors = (type: string, title: string) => {
 export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIcalEventPress, onRangeChange }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0)
-  const { showIcal } = useSettingsStore()
+  const { showIcal, profs } = useSettingsStore()
   
   const flatListRef = useRef<FlatList>(null)
   const scrollRefs = useRef<Record<number, ScrollView | null>>({})
@@ -237,7 +238,8 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                           ))}
                           
                           {showIcal === true && cellData.ical.map(e => {
-                            const colors = getEventColors(e.type ?? 'CM', e.title);
+                            const colors = getEventColors(e.type ?? 'CM', e.title)
+                            e.prof = extractProf(e.description, profs) ?? ''
                             return (
                               <TouchableOpacity
                                 key={`${weekOffset}-${hour}-${dateStr}-${e.uid}`}
@@ -248,24 +250,21 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                                   style={[styles.eventTitle, { color: colors.foreground }]}
                                   numberOfLines={1}
                                 >
-                                  {e.title}
+                                  {e.title} ({e.type})
                                 </ThemedText>
-                                {e.location && (
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4}}>
-                                    <Ionicons name="location" size={10} style={{ color: colors.foreground }} />
-                                    <ThemedText style={[styles.eventMeta, { color: colors.foreground }]} numberOfLines={1}>
-                                      {e.location}
-                                    </ThemedText>
-                                  </View>
-                                )}
-                                {e.prof && (
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 6 }}>
+                                  {e.location && (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                                      <Ionicons name="location" size={10} style={{ color: colors.foreground }} />
+                                      <ThemedText style={[styles.eventMeta, { color: colors.foreground }]} numberOfLines={1}>
+                                        {e.location}
+                                      </ThemedText>
+                                    </View>
+                                  )}
+                                  {e.prof && (
                                     <Ionicons name="person" size={10} style={{ color: colors.foreground }} />
-                                    <ThemedText style={[styles.eventMeta, { color: colors.foreground }]} numberOfLines={1}>
-                                      {e.prof}
-                                    </ThemedText>
-                                  </View>
-                                )}
+                                  )}
+                                </View>
                               </TouchableOpacity>
                             )
                           })}

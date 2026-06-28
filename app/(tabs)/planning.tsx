@@ -2,7 +2,10 @@ import { EventDetailModal } from '@/components/calendar/event-detail-modal'
 import { EventModal } from '@/components/calendar/event-modal'
 import { MonthView } from '@/components/calendar/month-view'
 import { WeekView } from '@/components/calendar/week-view'
+import { ProfsManagementModal } from '@/components/settings/prof-modal'
+import { ThemedIcon } from '@/components/themed-icon'
 import { ThemedText } from '@/components/themed-text'
+import { ThemedTouchable } from '@/components/themed-touchable'
 import { ThemedView } from '@/components/themed-view'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useICalEvents } from '@/src/features/ical/useICalEvents'
@@ -32,6 +35,7 @@ export default function PlanningScreen() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | ICalEvent | null>(null)
   const detailsSheetRef = useRef<BottomSheet>(null)
   const bottomSheetRef = useRef<BottomSheet>(null)
+  const profsSheetRef = useRef<BottomSheet>(null)
   const insets = useSafeAreaInsets()
   const inactiveBg = useThemeColor({ light: '#f0f0f0', dark: '#2c2c2e' }, 'text')
 
@@ -96,24 +100,31 @@ export default function PlanningScreen() {
         </View>
         <View style={styles.topbarRight}>
           {mode === 'week' && (
-            <TouchableOpacity
-              style={[styles.icalBtn, { backgroundColor: showIcal ? '#10b98120' : '#6f6d6d' }]}
-              onPress={() => {
-                toggleICalL()
-                toast.show({
-                  variant: 'message',
-                  icon: 'school',
-                  message: `Affichage ${showICalL2 ? 'L3' : 'L2'}`,
-                  duration: 2000,
-                })
-              }}
-              onLongPress={() => onShowICal()}
-              delayLongPress={200}
-            >
-              <ThemedText style={[styles.icalBtnText]}>
-                {showICalL2 ? "L2" : "L3"}
-              </ThemedText>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10}}>
+              <ThemedTouchable variant="ghost" onPress={
+                () => profsSheetRef.current?.expand()
+              }>
+                <ThemedIcon name="person" size={20} />
+              </ThemedTouchable>
+              <TouchableOpacity
+                style={[styles.icalBtn, { backgroundColor: showIcal ? '#10b98120' : '#6f6d6d' }]}
+                onPress={() => {
+                  toggleICalL()
+                  toast.show({
+                    variant: 'message',
+                    icon: 'school',
+                    message: `Affichage ${showICalL2 ? 'L3' : 'L2'}`,
+                    duration: 2000,
+                  })
+                }}
+                onLongPress={() => onShowICal()}
+                delayLongPress={200}
+              >
+                <ThemedText style={[styles.icalBtnText]}>
+                  {showICalL2 ? "L2" : "L3"}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
           )}
           <View style={[styles.toggle, { backgroundColor: inactiveBg }]}>
             {(['week', 'month'] as ViewMode[]).map((m) => (
@@ -160,6 +171,8 @@ export default function PlanningScreen() {
       <EventDetailModal ref={detailsSheetRef} event={selectedEvent} />
 
       <EventModal ref={bottomSheetRef} selectedDate={selectedDate} selectedHour={selectedHour} />
+
+      <ProfsManagementModal ref={profsSheetRef} />
     </ThemedView>
   )
 }

@@ -43,7 +43,6 @@ export function parseICal(raw: string, source: 'L2' | 'L3'): ICalEvent[] {
         title,
         type: extractType(description, title) ?? 'CM',
         location: location,
-        prof: extractProf(description),
         description: description || undefined,
         start: parseICalDate(dtstart),
         end: parseICalDate(dtend),
@@ -53,31 +52,28 @@ export function parseICal(raw: string, source: 'L2' | 'L3'): ICalEvent[] {
     .filter(Boolean) as ICalEvent[]
 }
 
-function extractProf(description: string): string | undefined {
-  if (!description) return undefined
-  // Nettoie les \n et prend les lignes
-  const lines = description
-    .replace(/\\n/g, '\n')
-    .split('\n')
-    .map(l => l.trim())
-    .filter(Boolean)
+export function extractProf(description: string | undefined | null, profsList: string[]): string | null {
+  if (!description || !profsList || profsList.length === 0) return null
 
-  // Le prof est la dernière ligne avant "(Exporté le:"
-  const filtered = lines.filter(l => !l.startsWith('(Exporté le:'))
-  const last = filtered[filtered.length - 1]
+  const upperDesc = description.toUpperCase()
+  const profsTrouves: string[] = []
 
-  // Le prof est en majuscules — vérifie que c'est pas un groupe (L2 MIASHS, etc.)
-  if (last && last === last.toUpperCase() && !last.startsWith('L') && !last.startsWith('M')) {
-    return last
+  // On parcourt la liste des profs enregistrés dans le store
+  for (const prof of profsList) {
+    // On compare tout en majuscules pour éviter les pièges de casse
+    if (upperDesc.includes(prof.toUpperCase())) {
+      profsTrouves.push(prof)
+    }
   }
 
-  // Fallback : cherche une ligne tout en majuscules avec un prénom/nom
-  return filtered.find(l =>
-    l === l.toUpperCase() &&
-    l.length > 5 &&
-    !l.match(/^(L[1-3]|M[12]|CM|TD|TP|UFR|CPES)/)
-  )
+  // Si on a trouvé des profs correspondants dans la description, on les fusionne avec une virgule
+  if (profsTrouves.length > 0) {
+    return profsTrouves.join(', ')
+  }
+
+  return null
 }
+
 
 function extractType(description: string, title: string): 'CM' | 'TD' | 'CTE' | 'CC' {
   const cleanTitle = title.toLowerCase().replace(/\u00a0/g, ' ');
