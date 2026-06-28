@@ -29,7 +29,7 @@ export function parseICal(raw: string, source: 'L2' | 'L3'): ICalEvent[] {
     .map(block => {
       const uid = extractField(block, 'UID')
       const title = extractField(block, 'SUMMARY')
-      const location = extractField(block, 'LOCATION')
+      const location = extractField(block, 'LOCATION').trim()
       const dtstart = extractField(block, 'DTSTART')
       const dtend = extractField(block, 'DTEND')
       const description = extractField(block, 'DESCRIPTION')
@@ -41,7 +41,8 @@ export function parseICal(raw: string, source: 'L2' | 'L3'): ICalEvent[] {
       return {
         uid,
         title,
-        location: extractLocation(block),
+        type: extractType(description, title) ?? 'CM',
+        location: location,
         prof: extractProf(description),
         description: description || undefined,
         start: parseICalDate(dtstart),
@@ -78,7 +79,27 @@ function extractProf(description: string): string | undefined {
   )
 }
 
-function extractLocation(block: string): string | undefined {
-  const location = extractField(block, 'LOCATION').trim()
-  return location || undefined
+function extractType(description: string, title: string): 'CM' | 'TD' | 'CTE' | 'CC' {
+  const cleanTitle = title.toLowerCase().replace(/\u00a0/g, ' ');
+  const cleanDescription = description ? description.toLowerCase().replace(/\u00a0/g, ' ') : '';
+
+  if (/\bcte\d*\b/.test(cleanTitle) || /rattrapage/i.test(cleanTitle)) {
+    return 'CTE';
+  }
+
+  if (/\bContrôle continue\d*\b/.test(cleanTitle)) {
+    return 'CC'
+  }
+
+  if (cleanDescription) {
+    if (/\b(td|tp)\d*\b/.test(cleanDescription)) {
+      return 'TD';
+    }
+
+    if (/\bcm\b/.test(cleanDescription)) {
+      return 'CM';
+    }
+  }
+
+  return 'CM';
 }

@@ -17,6 +17,24 @@ function isICalEvent(event: CalendarEvent | ICalEvent): event is ICalEvent {
   return 'uid' in event
 }
 
+const TYPE_COLORS: Record<string, { background: string; foreground: string }> = {
+  CM: { background: '#10b98133', foreground: '#10b981' },
+  TD: { background: '#b0b91033', foreground: '#b0b910' },
+  CTE: { background: '#b93a1033', foreground: '#b93a10' },
+  CC: { background: '#3b82f633', foreground: '#3b82f6' }
+}
+
+const getEventColors = (type: string, title: string) => {
+  const upperTitle = title.toUpperCase()
+  if (type === 'CC' || upperTitle.includes('CC') || upperTitle.includes('CONTRÔLE CONTINU') || upperTitle.includes('CONTROLE CONTINU')) {
+    return TYPE_COLORS.CC
+  }
+  if (type === 'CTE' || upperTitle.includes('CT') || upperTitle.includes('CONTRÔLE TERMINAL') || upperTitle.includes('CONTROLE TERMINAL')) {
+    return TYPE_COLORS.CTE
+  }
+  return TYPE_COLORS[type] || TYPE_COLORS.CM
+}
+
 // eslint-disable-next-line react/display-name
 export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) => {
   const bg = useThemeColor({ light: '#ffffff', dark: '#1c1c1e' }, 'background')
@@ -33,7 +51,7 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
   const hours = Math.floor(duration / 60)
   const minutes = duration % 60
   const color = ical
-    ? event.source === 'L2' ? '#6366f1' : '#10b981'
+    ? getEventColors(event.type ?? 'CM', event.title).foreground
     : event.color
 
   const handleDelete = () => {

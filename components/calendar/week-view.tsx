@@ -6,6 +6,7 @@ import dayjs from '@/src/lib/day'
 import { useSettingsStore } from '@/src/stores/settingsStore'
 import { CalendarEvent } from '@/src/types/events'
 import { ICalEvent } from '@/src/types/ical'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Dimensions, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { ThemedText } from '../themed-text'
@@ -20,7 +21,25 @@ interface Props {
   onEventPress?: (event: CalendarEvent) => void
   onIcalEventPress?: (event: ICalEvent) => void
   icalEvents?: ICalEvent[]
-  onRangeChange?: (firstDate: string, lastDate: string) => void
+  onRangeChange?: (firstDate: string, lastDate: string, offset: number) => void
+}
+
+const TYPE_COLORS: Record<string, { background: string; foreground: string }> = {
+  CM: { background: '#10b98133', foreground: '#10b981' },
+  TD: { background: '#b0b91033', foreground: '#b0b910' },
+  CTE: { background: '#b93a1033', foreground: '#b93a10' },
+  CC: { background: '#3b82f633', foreground: '#3b82f6' }
+}
+
+const getEventColors = (type: string, title: string) => {
+  const upperTitle = title.toUpperCase()
+  if (type === 'CC' || upperTitle.includes('CC') || upperTitle.includes('CONTRÔLE CONTINU') || upperTitle.includes('CONTROLE CONTINU')) {
+    return TYPE_COLORS.CC
+  }
+  if (type === 'CTE' || upperTitle.includes('CT') || upperTitle.includes('CONTRÔLE TERMINAL') || upperTitle.includes('CONTROLE TERMINAL')) {
+    return TYPE_COLORS.CTE
+  }
+  return TYPE_COLORS[type] || TYPE_COLORS.CM
 }
 
 export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIcalEventPress, onRangeChange }: Props) {
@@ -32,8 +51,6 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
   const scrollRefs = useRef<Record<number, ScrollView | null>>({})
   const verticalScrollY = useRef(DEFAULT_SCROLL_Y)
   const initialScrollDone = useRef<Record<number, boolean>>({})
-  
-  // 🔥 Verrou anti-boucle infinie pour la synchronisation en temps réel
   const isSyncingRef = useRef(false)
 
   const pageData = [-1, 0, 1]
@@ -54,10 +71,11 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
     const currentVisibleDate = dayjs().add(currentWeekOffset, 'week')
     const firstDate = currentVisibleDate.subtract(1, 'month').startOf('month').format('YYYY-MM-DD')
     const lastDate = currentVisibleDate.add(1, 'month').endOf('month').format('YYYY-MM-DD')
-    onRangeChange?.(firstDate, lastDate)
+    
+    // Modifiez cette ligne pour ajouter currentWeekOffset :
+    onRangeChange?.(firstDate, lastDate, currentWeekOffset)
   }, [currentWeekOffset])
 
-  // 🔥 Synchronisation en temps réel optimisée
   const syncVerticalScroll = (y: number, originOffset: number) => {
     if (isSyncingRef.current) return
     isSyncingRef.current = true
@@ -69,7 +87,6 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
       }
     })
 
-    // Libère le verrou immédiatement après l'exécution du scroll
     setTimeout(() => {
       isSyncingRef.current = false
     }, 0)
@@ -99,7 +116,7 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
         data={pageData}
         horizontal
         pagingEnabled
-        directionalLockEnabled={true} // Gardé ici : bloque le horizontal si on scroll verticalement
+        directionalLockEnabled={true}
         showsHorizontalScrollIndicator={false}
         initialScrollIndex={1}
         getItemLayout={(_, index) => ({
@@ -127,7 +144,6 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
           const days = getDays(weekOffset)
           return (
             <View style={{ width: SCREEN_WIDTH }}>
-              {/* Header jours */}
               <View style={[styles.headerRow, { borderBottomColor: borderColor }]}>
                 <View style={styles.timeGutter} />
                 {days.map((day) => {
@@ -141,9 +157,7 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                   return (
                     <TouchableOpacity
                       key={`${weekOffset}-${dateStr}`}
-                      style={[
-                        styles.dayHeader,
-                      ]}
+                      style={[styles.dayHeader]}
                       onPress={() => setSelected(dateStr)}
                     >
                       <ThemedText style={[
@@ -172,15 +186,11 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                 })}
               </View>
 
-              {/* Grille de la semaine */}
               <ScrollView 
                 ref={el => { scrollRefs.current[weekOffset] = el }}
                 showsVerticalScrollIndicator={false}
-                scrollEventThrottle={16} // Permet un suivi fluide à 60fps
-                
-                // 🛠️ Nettoyage des verrous conflictuels ici
+                scrollEventThrottle={16}
                 onScroll={e => syncVerticalScroll(e.nativeEvent.contentOffset.y, weekOffset)}
-                
                 onLayout={() => {
                   if (!initialScrollDone.current[weekOffset]) {
                     initialScrollDone.current[weekOffset] = true
@@ -200,21 +210,20 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                       const cellKey = `${dateStr}-${hour}`
                       const cellData = indexedEvents[cellKey] || { local: [], ical: [] }
                       const isWeekend = day.isoWeekday() >= 6
-                      const holiday = HOLIDAYS[dateStr]
 
                       return (
                         <TouchableOpacity
-                            key={`${weekOffset}-${hour}-${dateStr}`}
-                            style={[
-                              styles.cell,
-                              { borderLeftColor: borderColor },
-                              isWeekend && { backgroundColor: '#6366f108' },
-                              HOLIDAYS[dateStr] && { backgroundColor: '#f59e0b08' },
-                            ]}
-                            onLongPress={() => onLongPressDate?.(dateStr, hour)}
-                            delayLongPress={400}
-                            activeOpacity={1}
-                          >
+                          key={`${weekOffset}-${hour}-${dateStr}`}
+                          style={[
+                            styles.cell,
+                            { borderLeftColor: borderColor },
+                            isWeekend && { backgroundColor: '#6366f108' },
+                            HOLIDAYS[dateStr] && { backgroundColor: '#f59e0b08' },
+                          ]}
+                          onLongPress={() => onLongPressDate?.(dateStr, hour)}
+                          delayLongPress={400}
+                          activeOpacity={1}
+                        >
                           {cellData.local.map(e => (
                             <TouchableOpacity
                               key={`${weekOffset}-${e.id}`}
@@ -227,34 +236,39 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                             </TouchableOpacity>
                           ))}
                           
-                          {showIcal === true && cellData.ical.map(e => (
-                            <TouchableOpacity
-                              key={`${weekOffset}-${hour}-${dateStr}-${e.uid}`}
-                              style={[styles.eventBlock, {
-                                backgroundColor: '#10b98133'
-                              }]}
-                              onPress={() => onIcalEventPress?.(e)}
-                            >
-                              <ThemedText
-                                style={[styles.eventTitle, {
-                                  color: '#10b981'
-                                }]}
-                                numberOfLines={1}
+                          {showIcal === true && cellData.ical.map(e => {
+                            const colors = getEventColors(e.type ?? 'CM', e.title);
+                            return (
+                              <TouchableOpacity
+                                key={`${weekOffset}-${hour}-${dateStr}-${e.uid}`}
+                                style={[styles.eventBlock, { backgroundColor: colors.background }]}
+                                onPress={() => onIcalEventPress?.(e)}
                               >
-                                {e.title}
-                              </ThemedText>
-                              {e.location && (
-                                <ThemedText style={[styles.eventMeta, { color: '#10b981' }]} numberOfLines={1}>
-                                  📍 {e.location}
+                                <ThemedText
+                                  style={[styles.eventTitle, { color: colors.foreground }]}
+                                  numberOfLines={1}
+                                >
+                                  {e.title}
                                 </ThemedText>
-                              )}
-                              {e.prof && (
-                                <ThemedText style={[styles.eventMeta, { color: '#10b981' }]} numberOfLines={1}>
-                                  👤 {e.prof}
-                                </ThemedText>
-                              )}
-                            </TouchableOpacity>
-                          ))}
+                                {e.location && (
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                                    <Ionicons name="location" size={10} style={{ color: colors.foreground }} />
+                                    <ThemedText style={[styles.eventMeta, { color: colors.foreground }]} numberOfLines={1}>
+                                      {e.location}
+                                    </ThemedText>
+                                  </View>
+                                )}
+                                {e.prof && (
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                                    <Ionicons name="person" size={10} style={{ color: colors.foreground }} />
+                                    <ThemedText style={[styles.eventMeta, { color: colors.foreground }]} numberOfLines={1}>
+                                      {e.prof}
+                                    </ThemedText>
+                                  </View>
+                                )}
+                              </TouchableOpacity>
+                            )
+                          })}
                         </TouchableOpacity>
                       )
                     })}

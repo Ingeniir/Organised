@@ -21,6 +21,8 @@ type ViewMode = 'week' | 'month'
 
 export default function PlanningScreen() {
   const [mode, setMode] = useState<ViewMode>('week')
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [weekKey, setWeekKey] = useState(0)
   const [icalRange, setIcalRange] = useState({
     firstDate: dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'),
     lastDate: dayjs().add(1, 'month').endOf('month').format('YYYY-MM-DD'),
@@ -31,7 +33,6 @@ export default function PlanningScreen() {
   const detailsSheetRef = useRef<BottomSheet>(null)
   const bottomSheetRef = useRef<BottomSheet>(null)
   const insets = useSafeAreaInsets()
-  const activeBg = useThemeColor({ light: '#10b981ee', dark: '#6366f1ee' }, 'text')
   const inactiveBg = useThemeColor({ light: '#f0f0f0', dark: '#2c2c2e' }, 'text')
 
   const { showICalL2, showICalL3, toggleICalL, showIcal, onShowICal } = useSettingsStore()
@@ -68,6 +69,17 @@ export default function PlanningScreen() {
     detailsSheetRef.current?.expand()
   }
 
+  const handleResetToToday = () => {
+    setWeekOffset(0)
+    setWeekKey(prev => prev + 1)
+    toast.show({
+      variant: 'message',
+      icon: 'calendar-today',
+      message: "Retour à aujourd'hui",
+      duration: 1500
+    })
+  }
+
   return (
     <ThemedView style={{ flex: 1 }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
@@ -75,6 +87,11 @@ export default function PlanningScreen() {
           <ThemedText type="defaultSemiBold">Planning</ThemedText>
           {isLoading && (
             <ActivityIndicator size="small" color="#6366f1" />
+          )}
+          {mode === 'week' && weekOffset !== 0 && (
+            <TouchableOpacity style={styles.todayBtn} onPress={handleResetToToday}>
+              <ThemedText style={styles.todayBtnText}>Aujourd&#39;hui</ThemedText>
+            </TouchableOpacity>
           )}
         </View>
         <View style={styles.topbarRight}>
@@ -98,7 +115,6 @@ export default function PlanningScreen() {
               </ThemedText>
             </TouchableOpacity>
           )}
-          {/* Toggle semaine/mois */}
           <View style={[styles.toggle, { backgroundColor: inactiveBg }]}>
             {(['week', 'month'] as ViewMode[]).map((m) => (
               <TouchableOpacity
@@ -124,11 +140,15 @@ export default function PlanningScreen() {
 
       {mode === 'week' 
         ? <WeekView 
+            key={weekKey}
             onLongPressDate={handleLongPress}
             onEventPress={handleEventPress}
             onIcalEventPress={handleICalEventPress}
             icalEvents={icalEvents}
-            onRangeChange={(firstDate, lastDate) => setIcalRange({ firstDate, lastDate })}
+            onRangeChange={(firstDate, lastDate, offset) => {
+              setIcalRange({ firstDate, lastDate })
+              if (offset !== undefined) setWeekOffset(offset)
+            }}
           /> 
         : <MonthView 
             onSelectDate={setSelectedDate} 
@@ -165,7 +185,20 @@ const styles = StyleSheet.create({
   },
   toggleText: { fontSize: 13, fontWeight: '500' },
   topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 8},
-  topbarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8},
+  topbarLeft: { flexDirection: 'row', alignItems: 'center', gap: 12},
   icalBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   icalBtnText: { fontSize: 12, fontWeight: '600' },
+  todayBtn: {
+    backgroundColor: '#10b98122',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#10b98144',
+  },
+  todayBtnText: {
+    fontSize: 12,
+    color: '#10b981',
+    fontWeight: '600',
+  },
 })
