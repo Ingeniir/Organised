@@ -5,21 +5,45 @@ import { supabase } from "@/src/lib/supabase";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link } from "expo-router";
 import { useState } from "react";
-import { Alert, StyleSheet, TouchableOpacity } from "react-native";
+import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function RegisterScreen() {
     const [name, setName] = useState<string>('')
     const [email, setEmail] = useState<string>('')
     const [password, setPassword] = useState<string>('')
     const [loading, setLoading] = useState<boolean>(false)
+    const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({})
+
+    const validate = (): boolean => {
+        const e: typeof errors = {}
+        if (!name.trim()) e.name = 'Nom requis'
+        if (!email.trim()) e.email = 'Email requis'
+        else if (!EMAIL_RE.test(email)) e.email = 'Email invalide'
+        if (!password) e.password = 'Mot de passe requis'
+        else if (password.length < 8) e.password = '8 caractères minimum'
+        else if (!/[A-Z]/.test(password)) e.password = 'Au moins une majuscule'
+        else if (!/[0-9]/.test(password)) e.password = 'Au moins un chiffre'
+        setErrors(e)
+        return Object.keys(e).length === 0
+    }
 
     const handleRegister = async () => {
+        if (!validate()) return
         setLoading(true)
         const { error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: name } } })
         if (error) Alert.alert('Erreur', error.message)
         else Alert.alert('Vérifié ton email', 'Un lien de confirmation t\'a été envoyé.')
         setLoading(false)
     }
+
+    const clearError = (field: keyof typeof errors) => {
+        if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }))
+    }
+
+    const errorBorder = (field: keyof typeof errors) =>
+        errors[field] ? { borderColor: '#ef4444' } : undefined
 
     return (
     <ThemedView style={styles.container}>
@@ -28,28 +52,37 @@ export default function RegisterScreen() {
             <Ionicons name="person-add-outline" size={20} color="white" />
         </ThemedView>
 
-      <ThemedInput
-        style={styles.input}
-        placeholder="Name"
-        value={name}
-        onChangeText={setName}
-        autoCapitalize="words"
-      />
-      <ThemedInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <ThemedInput
-        style={styles.input}
-        placeholder="Mot de passe"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      <View>
+        <ThemedInput
+          style={[styles.input, errorBorder('name')]}
+          placeholder="Nom"
+          value={name}
+          onChangeText={(t) => { setName(t); clearError('name') }}
+          autoCapitalize="words"
+        />
+        {errors.name && <ThemedText style={styles.errorText}>{errors.name}</ThemedText>}
+      </View>
+      <View>
+        <ThemedInput
+          style={[styles.input, errorBorder('email')]}
+          placeholder="Email"
+          value={email}
+          onChangeText={(t) => { setEmail(t); clearError('email') }}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        {errors.email && <ThemedText style={styles.errorText}>{errors.email}</ThemedText>}
+      </View>
+      <View>
+        <ThemedInput
+          style={[styles.input, errorBorder('password')]}
+          placeholder="Mot de passe"
+          value={password}
+          onChangeText={(t) => { setPassword(t); clearError('password') }}
+          secureTextEntry
+        />
+        {errors.password && <ThemedText style={styles.errorText}>{errors.password}</ThemedText>}
+      </View>
 
       <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
         <ThemedText style={styles.buttonText}>{loading ? 'Inscription…' : 'S\'inscrire'}</ThemedText>
@@ -76,4 +109,5 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   link: { textAlign: 'center', color: '#6366f1', marginTop: 8 },
+  errorText: { color: '#ef4444', fontSize: 12, marginTop: 2, marginLeft: 4 },
 })

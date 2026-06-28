@@ -18,7 +18,7 @@ const DAYS = Array.from({ length: 7 }, (_, i) =>
 
 function getContinuousHours(events: any[], icalEvents: any[]) {
   let minHour = 8
-  let maxHour = 16 
+  let maxHour = 20
 
   const allHours: number[] = []
   events.forEach(e => allHours.push(dayjs(e.start_at).hour()))
@@ -26,7 +26,7 @@ function getContinuousHours(events: any[], icalEvents: any[]) {
 
   if (allHours.length > 0) {
     minHour = Math.min(...allHours, 8)
-    maxHour = Math.max(...allHours, 17) 
+    maxHour = Math.max(...allHours, 20) 
   }
 
   return Array.from({ length: maxHour - minHour + 1 }, (_, i) => minHour + i)

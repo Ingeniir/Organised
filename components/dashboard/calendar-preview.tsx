@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useEvents } from '@/src/features/calendar/useEvents'
 import dayjs from '@/src/lib/day'
+import { useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 interface Props {
@@ -19,19 +20,23 @@ export function CalendarPreview({ width, height}: Props) {
   const to = current.endOf('month').toISOString()
   const { data: events = [] } = useEvents(from, to)
 
-  const eventsByDay = events.reduce((acc, event) => {
-    const day = dayjs(event.start_at).date()
-    if (!acc[day]) acc[day] = []
-    acc[day].push(event)
-    return acc
-  }, {} as Record<number, typeof events>)
+  const eventsByDay = useMemo(() => {
+    return events.reduce((acc, event) => {
+      const day = dayjs(event.start_at).date()
+      if (!acc[day]) acc[day] = []
+      acc[day].push(event)
+      return acc
+    }, {} as Record<number, typeof events>)
+  }, [events])
 
   const startOffset = current.startOf('month').isoWeekday() - 1
   const daysInMonth = current.daysInMonth()
-  const cells = [
-    ...Array(startOffset).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ]
+  const cells = useMemo(() => {
+    return [
+      ...Array(startOffset).fill(null),
+      ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+    ]
+  }, [daysInMonth, startOffset])
 
   const SCALE = 1.2
   const innerWidth = width / SCALE

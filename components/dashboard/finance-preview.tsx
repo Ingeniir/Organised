@@ -2,6 +2,7 @@ import { ThemedIcon } from '@/components/themed-icon'
 import { ThemedText } from '@/components/themed-text'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useBankAccounts, useTransactions } from '@/src/features/finance/useFinance'
+import { useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 interface Props {
@@ -23,13 +24,17 @@ export function FinancePreview({ width, height }: Props) {
   const innerWidth = width / SCALE
   const innerHeight = height / SCALE
 
-  const totalExpenses = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + Number(t.amount), 0)
+  const totalExpenses = useMemo(() => {
+    return transactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount), 0)
+  }, [transactions])
 
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + Number(t.amount), 0)
+  const totalIncome = useMemo(() => {
+    return transactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0)
+  }, [transactions])
 
   return (
     <View style={[styles.clipBox, { width, height }]}>

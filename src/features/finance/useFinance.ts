@@ -93,7 +93,7 @@ export function useCreateTransaction() {
     const { error } = await supabase.rpc('add_transaction', {
         p_account_id: transaction.account_id,
         p_user_id: user!.id,
-        p_amount: transaction.amount / 2,
+        p_amount: transaction.amount,
         p_type: transaction.type,
         p_category: transaction.category,
         p_description: transaction.description ?? null,

@@ -67,10 +67,7 @@ function TransactionBadge({ transaction }: { transaction: Transaction }) {
     )
   }
 
-  const targetAccount = accounts[1]
-  const displayAmount = targetAccount && transaction.account_id === targetAccount.id 
-    ? transaction.amount * 2 
-    : transaction.amount
+  const displayAmount = transaction.amount
 
   return (
     <TouchableOpacity
@@ -128,13 +125,9 @@ export default function FinanceScreen() {
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + Number(t.amount), 0)
 
-  const targetAccount = accounts[1]
   const totalIncome = transactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => {
-      const amt = targetAccount && t.account_id === targetAccount.id ? Number(t.amount) * 2 : Number(t.amount)
-      return sum + amt
-    }, 0)
+    .reduce((sum, t) => sum + Number(t.amount), 0)
 
   return (
     <ThemedView style={{ flex: 1 }}>
