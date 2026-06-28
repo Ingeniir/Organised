@@ -38,11 +38,11 @@ jobs:
       - name: Compiler l'app iOS (sans signature)
         run: |
           xcodebuild \
-            -workspace ios/organised.xcworkspace \
-            -scheme organised \
+            -workspace ios/Organised.xcworkspace \
+            -scheme Organised \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath $RUNNER_TEMP/organised.xcarchive \
+            -archivePath $RUNNER_TEMP/Organised.xcarchive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
@@ -51,7 +51,7 @@ jobs:
       - name: Empaqueter en .ipa
         run: |
           mkdir -p Payload
-          cp -r $RUNNER_TEMP/organised.xcarchive/Products/Applications/*.app Payload/
+          cp -r $RUNNER_TEMP/Organised.xcarchive/Products/Applications/*.app Payload/
           zip -r app-unsigned.ipa Payload
 
       - name: Publier le .ipa en artifact
