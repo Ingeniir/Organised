@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   dayCircle: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
-  todayCircle: { backgroundColor: '#6366f1' },
+  todayCircle: { backgroundColor: '#10b981' },
   dayText: { fontSize: 11 },
   todayText: { color: '#fff', fontWeight: '700' },
   dots: { flexDirection: 'row', gap: 1, marginTop: 1 },

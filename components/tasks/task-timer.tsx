@@ -96,7 +96,7 @@ export function TaskTimer({ durationMinutes }: Props) {
         ) : elapsed > 0 ? (
           <ThemedText style={styles.time}>{formatTime(elapsed)}</ThemedText>
         ) : (
-          <ThemedIcon name="play" size={16} lightColor="#6366f1" darkColor="#6366f1" />
+          <ThemedIcon name="play" size={16} lightColor="#10b981" darkColor="#10b981" />
         )}
       </View>
     </TouchableOpacity>

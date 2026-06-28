@@ -26,15 +26,16 @@ const CATEGORY_ICONS: Record<string, string> = {
 }
 
 function TransactionBadge({ transaction }: { transaction: Transaction }) {
-  const mutedColor = useThemeColor({ light: '#999', dark: '#666' }, 'text')
-  const cardBg = useThemeColor({ light: '#f9f9f9', dark: '#1c1c1e' }, 'background')
+  const mutedColor = useThemeColor({ light: '#8e8e93', dark: '#8e8e93' }, 'text')
+  const cardBg = useThemeColor({ light: '#f2f2f7', dark: '#1c1c1e' }, 'background')
+  const borderTheme = useThemeColor({ light: '#e5e5ea', dark: '#2c2c2e' }, 'border')
 
   const isIncome = transaction.type === 'income'
   const isTransfer = transaction.type === 'transfer'
   const amountColor = isIncome ? '#10b981' : isTransfer ? '#6366f1' : '#ef4444'
   const icon = CATEGORY_ICONS[transaction.category] ?? 'ellipse-outline'
   const { mutate: deleteTransaction, isPending } = useDeleteTransaction()
-  const toast = useToastStore();
+  const toast = useToastStore()
   const { data: accounts = [] } = useBankAccounts()
 
   const handleDelete = () => {
@@ -52,10 +53,11 @@ function TransactionBadge({ transaction }: { transaction: Transaction }) {
                 toast.show({
                   variant: 'message',
                   icon: 'wallet',
-                  message: `-${Number(transaction.amount).toFixed(2)}€`
+                  message: `-${Number(transaction.amount).toFixed(2)}€`,
+                  duration: 1500
                 })
               },
-              onError: (error) => {
+              onError: () => {
                 Alert.alert('Erreur', 'Impossible de supprimer la transaction')
               }
             })
@@ -65,17 +67,23 @@ function TransactionBadge({ transaction }: { transaction: Transaction }) {
     )
   }
 
+  const targetAccount = accounts[1]
+  const displayAmount = targetAccount && transaction.account_id === targetAccount.id 
+    ? transaction.amount * 2 
+    : transaction.amount
+
   return (
     <TouchableOpacity
       onLongPress={handleDelete}
       delayLongPress={400}
       disabled={isPending}
+      activeOpacity={0.7}
     >
-      <View style={[styles.badge, { backgroundColor: cardBg }]}>
-        <View style={[styles.badgeIcon, { backgroundColor: amountColor + '20' }]}>
+      <View style={[styles.badge, { backgroundColor: cardBg, borderColor: borderTheme }]}>
+        <View style={[styles.badgeIcon, { backgroundColor: amountColor + '15' }]}>
           <ThemedIcon
             name={icon as any}
-            size={18}
+            size={20}
             lightColor={amountColor}
             darkColor={amountColor}
           />
@@ -90,7 +98,7 @@ function TransactionBadge({ transaction }: { transaction: Transaction }) {
         </View>
         <View style={styles.badgeRight}>
           <ThemedText style={[styles.badgeAmount, { color: amountColor }]}>
-            {isIncome ? '+' : isTransfer ? '↔' : '-'}{Math.abs(transaction.account_id === accounts[1].id ? transaction.amount * 2 : transaction.amount).toFixed(2)}€
+            {isIncome ? '+' : isTransfer ? '↔' : '-'}{Math.abs(displayAmount).toFixed(2)}€
           </ThemedText>
           <ThemedText style={[styles.badgeDate, { color: mutedColor }]}>
             {dayjs(transaction.created_at).format('D MMM')}
@@ -105,8 +113,11 @@ export default function FinanceScreen() {
   const insets = useSafeAreaInsets()
   const { data: accounts = [] } = useBankAccounts()
   const { data: transactions = [] } = useTransactions()
-  const mutedColor = useThemeColor({ light: '#999', dark: '#666' }, 'text')
-  const cardBg = useThemeColor({ light: '#f9f9f9', dark: '#1c1c1e' }, 'background')
+  const mutedColor = useThemeColor({ light: '#8e8e93', dark: '#8e8e93' }, 'text')
+  const cardBg = useThemeColor({ light: '#f2f2f7', dark: '#1c1c1e' }, 'background')
+  const mainCardBg = useThemeColor({ light: '#f9f6f0', dark: '#1e1b14' }, 'background')
+  const mainCardText = useThemeColor({ light: '#0a7ea4', dark: '#4fc3f7' }, 'text')
+  const statLabelColor = useThemeColor({ light: '#555555', dark: '#cccccc' }, 'text')
 
   const bottomSheetRef = useRef<BottomSheet>(null)
 
@@ -117,58 +128,58 @@ export default function FinanceScreen() {
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + Number(t.amount), 0)
 
+  const targetAccount = accounts[1]
   const totalIncome = transactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + (t.account_id === accounts[1].id ? Number(t.amount) * 2 : Number(t.amount)), 0)
+    .reduce((sum, t) => {
+      const amt = targetAccount && t.account_id === targetAccount.id ? Number(t.amount) * 2 : Number(t.amount)
+      return sum + amt
+    }, 0)
 
   return (
     <ThemedView style={{ flex: 1 }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
         <ThemedText type="defaultSemiBold" style={styles.topbarTitle}>Finances</ThemedText>
         <ThemedTouchable variant="ghost" onPress={() => bottomSheetRef.current?.expand()}>
-          <ThemedIcon name="add-circle-outline" size={26} lightColor="#6366f1" darkColor="#6366f1" />
+          <ThemedIcon name="add-circle-outline" size={28} lightColor="#10b981" darkColor="#10b981" />
         </ThemedTouchable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-
-        {/* Compte principal */}
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {mainAccount && (
-          <ThemedView lightColor='#f9f6f0' style={styles.mainCard}>
-            <ThemedText style={styles.mainCardLabel}>Compte principal</ThemedText>
-            <ThemedView lightColor='#f9f6f0' style={styles.mainCardBalance}>
-              <ThemedText lightColor='#0a7ea4' darkColor='#f9f9f9' style={styles.mainCardBalanceText}>
+          <View style={[styles.mainCard, { backgroundColor: mainCardBg }]}>
+            <ThemedText style={[styles.mainCardLabel, { color: statLabelColor }]}>Compte principal</ThemedText>
+            <View style={styles.mainCardBalance}>
+              <ThemedText style={[styles.mainCardBalanceText, { color: mainCardText }]}>
                 {Number(mainAccount.balance).toFixed(2)}
               </ThemedText>
-              <ThemedIcon lightColor='#0a7ea4' darkColor='#f9f9f9' name="logo-euro" size={18} />
-            </ThemedView>
+              <ThemedIcon name="logo-euro" size={20} lightColor={mainCardText} darkColor={mainCardText} />
+            </View>
             <View style={styles.mainCardStats}>
               <View style={styles.mainCardStat}>
-                <ThemedIcon name="arrow-down-outline" size={14} lightColor='#00000090' darkColor='#ffffffcc' />
-                <ThemedText lightColor='#00000090' darkColor='#ffffffcc' style={styles.mainCardStatText}>+{totalIncome.toFixed(2)}€</ThemedText>
+                <ThemedIcon name="arrow-down-outline" size={14} lightColor="#10b981" darkColor="#10b981" />
+                <ThemedText style={[styles.mainCardStatText, { color: statLabelColor }]}>+{totalIncome.toFixed(2)}€</ThemedText>
               </View>
               <View style={styles.mainCardStat}>
-                <ThemedIcon name="arrow-up-outline" size={14} lightColor='#00000090' darkColor='#ffffffcc' />
-                <ThemedText lightColor='#00000090' darkColor='#ffffffcc' style={styles.mainCardStatText}>-{totalExpenses.toFixed(2)}€</ThemedText>
+                <ThemedIcon name="arrow-up-outline" size={14} lightColor="#ef4444" darkColor="#ef4444" />
+                <ThemedText style={[styles.mainCardStatText, { color: statLabelColor }]}>-{totalExpenses.toFixed(2)}€</ThemedText>
               </View>
             </View>
-          </ThemedView>
+          </View>
         )}
 
-        {/* Argent de poche */}
         {pocketAccount && (
           <View style={[styles.pocketCard, { backgroundColor: cardBg }]}>
             <View style={styles.pocketLeft}>
-              <ThemedIcon name="wallet-outline" size={18} lightColor="#10b981" darkColor="#10b981" />
-              <ThemedText style={[styles.pocketLabel, { color: mutedColor }]}>Argent de poche</ThemedText>
+              <ThemedIcon name="wallet-outline" size={20} lightColor="#10b981" darkColor="#10b981" />
+              <ThemedText style={styles.pocketLabel}>Argent de poche</ThemedText>
             </View>
-            <ThemedText style={styles.pocketBalance}>
+            <ThemedText style={[styles.pocketBalance, { color: '#10b981' }]}>
               {Number(pocketAccount.balance).toFixed(2)}€
             </ThemedText>
           </View>
         )}
 
-        {/* Transactions */}
         <ThemedText style={[styles.sectionTitle, { color: mutedColor }]}>
           Transactions récentes
         </ThemedText>
@@ -184,7 +195,6 @@ export default function FinanceScreen() {
             ))}
           </View>
         )}
-
       </ScrollView>
 
       <TransactionModal ref={bottomSheetRef} />
@@ -200,25 +210,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
-  topbarTitle: { fontSize: 24 },
-  scroll: { padding: 16, gap: 12 },
-
-  // Compte principal
+  topbarTitle: { fontSize: 26, fontWeight: '700' },
+  scroll: { padding: 16, gap: 16, paddingBottom: 32 },
   mainCard: {
-    borderWidth: 2,
-    borderColor: '#0a7ea4',
-    borderRadius: 20,
-    padding: 24,
-    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#0a7ea440',
+    borderRadius: 16,
+    padding: 20,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  mainCardLabel: { fontSize: 13 },
-  mainCardBalance: { position: 'relative', flexDirection: 'row', alignItems: 'center', gap: 4, height: 28 },
-  mainCardBalanceText: { fontSize: 24, fontWeight: 'bold', letterSpacing: -1 },
-  mainCardStats: { flexDirection: 'row', gap: 16, marginTop: 4 },
+  mainCardLabel: { fontSize: 13, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
+  mainCardBalance: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 34 },
+  mainCardBalanceText: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
+  mainCardStats: { flexDirection: 'row', gap: 16, marginTop: 6, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#0a7ea420' },
   mainCardStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  mainCardStatText: { fontSize: 13 },
-
-  // Argent de poche
+  mainCardStatText: { fontSize: 13, fontWeight: '600' },
   pocketCard: {
     borderRadius: 14,
     padding: 16,
@@ -226,32 +237,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  pocketLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  pocketLabel: { fontSize: 14 },
-  pocketBalance: { fontSize: 18, fontWeight: '600' },
-
-  // Transactions
-  sectionTitle: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginTop: 8 },
-  transactionList: { gap: 8 },
+  pocketLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pocketLabel: { fontSize: 15, fontWeight: '500' },
+  pocketBalance: { fontSize: 18, fontWeight: '700' },
+  sectionTitle: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginTop: 8, marginBottom: -4 },
+  transactionList: { gap: 10 },
   badge: {
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   badgeIcon: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeContent: { flex: 1, gap: 2 },
-  badgeCategory: { fontSize: 14, fontWeight: '500' },
-  badgeDesc: { fontSize: 12 },
+  badgeCategory: { fontSize: 15, fontWeight: '600' },
+  badgeDesc: { fontSize: 13 },
   badgeRight: { alignItems: 'flex-end', gap: 2 },
-  badgeAmount: { fontSize: 15, fontWeight: '600' },
-  badgeDate: { fontSize: 11 },
-  empty: { textAlign: 'center', marginTop: 40, opacity: 0.4 },
+  badgeAmount: { fontSize: 16, fontWeight: '700' },
+  badgeDate: { fontSize: 12, fontWeight: '500' },
+  empty: { textAlign: 'center', marginTop: 40, fontSize: 14, fontStyle: 'italic' },
 })

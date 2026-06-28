@@ -5,24 +5,38 @@ import { useEvents } from '@/src/features/calendar/useEvents'
 import { extractProf } from '@/src/features/ical/parser'
 import dayjs from '@/src/lib/day'
 import { useSettingsStore } from '@/src/stores/settingsStore'
-import { CalendarEvent } from '@/src/types/events'
-import { ICalEvent } from '@/src/types/ical'
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Dimensions, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { ThemedText } from '../themed-text'
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i + 1)
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const SCREEN_WIDTH = Dimensions.get('window').width
 const ROW_HEIGHT = 56 
 const DEFAULT_SCROLL_Y = 7 * ROW_HEIGHT 
 
 interface Props {
   onLongPressDate?: (date: string, hour: number) => void
-  onEventPress?: (event: CalendarEvent) => void
-  onIcalEventPress?: (event: ICalEvent) => void
-  icalEvents?: ICalEvent[]
+  onEventPress?: (event: any) => void
+  onIcalEventPress?: (event: any) => void
+  icalEvents?: any[]
   onRangeChange?: (firstDate: string, lastDate: string, offset: number) => void
+}
+
+interface UnifiedEvent {
+  id: string
+  title: string
+  start: dayjs.Dayjs
+  end: dayjs.Dayjs
+  isLocal: boolean
+  color?: string
+  type?: 'CM' | 'TD' | 'CTE' | 'CC'
+  location?: string
+  description?: string
+  prof?: string
+  original: any
+  colIndex?: number
+  totalCols?: number
 }
 
 const TYPE_COLORS: Record<string, { background: string; foreground: string }> = {
@@ -46,6 +60,7 @@ const getEventColors = (type: string, title: string) => {
 export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIcalEventPress, onRangeChange }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0)
+  const [now, setNow] = useState(dayjs())
   const { showIcal, profs } = useSettingsStore()
   
   const flatListRef = useRef<FlatList>(null)
@@ -73,9 +88,15 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
     const firstDate = currentVisibleDate.subtract(1, 'month').startOf('month').format('YYYY-MM-DD')
     const lastDate = currentVisibleDate.add(1, 'month').endOf('month').format('YYYY-MM-DD')
     
-    // Modifiez cette ligne pour ajouter currentWeekOffset :
     onRangeChange?.(firstDate, lastDate, currentWeekOffset)
   }, [currentWeekOffset])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(dayjs())
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   const syncVerticalScroll = (y: number, originOffset: number) => {
     if (isSyncingRef.current) return
@@ -93,22 +114,7 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
     }, 0)
   }
 
-  const indexedEvents = useMemo(() => {
-    const map: Record<string, { local: CalendarEvent[]; ical: ICalEvent[] }> = {}
-    events.forEach(e => {
-      const start = dayjs(e.start_at)
-      const key = `${start.format('YYYY-MM-DD')}-${start.hour()}`
-      if (!map[key]) map[key] = { local: [], ical: [] }
-      map[key].local.push(e)
-    })
-    icalEvents.forEach(e => {
-      const start = dayjs(e.start)
-      const key = `${start.format('YYYY-MM-DD')}-${start.hour()}`
-      if (!map[key]) map[key] = { local: [], ical: [] }
-      map[key].ical.push(e)
-    })
-    return map
-  }, [events, icalEvents])
+  const indicatorTop = (now.hour() + now.minute() / 60) * ROW_HEIGHT
 
   return (
     <View style={styles.container}>
@@ -143,6 +149,8 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
         }}
         renderItem={({ item: weekOffset }) => {
           const days = getDays(weekOffset)
+          const isCurrentWeekDisplay = days.some(d => d.isSame(now, 'day'))
+
           return (
             <View style={{ width: SCREEN_WIDTH }}>
               <View style={[styles.headerRow, { borderBottomColor: borderColor }]}>
@@ -201,78 +209,207 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                   }
                 }}
               >
-                {HOURS.map((hour) => (
-                  <View key={`${weekOffset}-${hour}`} style={[styles.hourRow, { borderTopColor: borderColor }]}>
-                    <ThemedText style={[styles.hourLabel, { color: mutedColor }]}>
-                      {`${hour}h`}
-                    </ThemedText>
+                <View style={styles.gridBody}>
+                  <View style={styles.timeGutter}>
+                    {HOURS.map((hour) => (
+                      <View key={hour} style={styles.hourLabelContainer}>
+                        <ThemedText style={[styles.hourLabel, { color: mutedColor }]}>
+                          {`${hour}h`}
+                        </ThemedText>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={styles.weekDaysContainer}>
                     {days.map((day) => {
                       const dateStr = day.format('YYYY-MM-DD')
-                      const cellKey = `${dateStr}-${hour}`
-                      const cellData = indexedEvents[cellKey] || { local: [], ical: [] }
                       const isWeekend = day.isoWeekday() >= 6
 
+                      const dayLocal: UnifiedEvent[] = events
+                        .filter(e => dayjs(e.start_at).format('YYYY-MM-DD') === dateStr)
+                        .map(e => ({
+                          id: e.id,
+                          title: e.title,
+                          start: dayjs(e.start_at),
+                          end: dayjs(e.end_at || dayjs(e.start_at).add(1, 'hour')),
+                          color: e.color,
+                          isLocal: true,
+                          original: e
+                        }))
+
+                      const dayIcal: UnifiedEvent[] = showIcal ? icalEvents.filter(e => dayjs(e.start).format('YYYY-MM-DD') === dateStr)
+                        .map(e => ({
+                          id: e.uid,
+                          title: e.title,
+                          start: dayjs(e.start),
+                          end: dayjs(e.end || dayjs(e.start).add(1, 'hour')),
+                          type: e.type,
+                          location: e.location,
+                          description: e.description,
+                          prof: e.prof,
+                          isLocal: false,
+                          original: e
+                        })) : []
+
+                      const dayEvents = [...dayLocal, ...dayIcal].sort((a, b) => a.start.diff(b.start))
+
+                      let clusters: any[][] = []
+                      dayEvents.forEach(evt => {
+                        let added = false
+                        for (let cluster of clusters) {
+                          const overlaps = cluster.some(cEvt => 
+                            evt.start.isBefore(cEvt.end) && evt.end.isAfter(cEvt.start)
+                          )
+                          if (overlaps) {
+                            cluster.push(evt)
+                            added = true
+                            break
+                          }
+                        }
+                        if (!added) clusters.push([evt])
+                      })
+
+                      clusters.forEach(cluster => {
+                        const columns: any[][] = []
+                        cluster.forEach(evt => {
+                          let placed = false
+                          for (let i = 0; i < columns.length; i++) {
+                            const lastEvt = columns[i][columns[i].length - 1]
+                            if (!evt.start.isBefore(lastEvt.end)) {
+                              columns[i].push(evt)
+                              evt.colIndex = i
+                              placed = true
+                              break
+                            }
+                          }
+                          if (!placed) {
+                            columns.push([evt])
+                            evt.colIndex = columns.length - 1
+                          }
+                        })
+                        cluster.forEach(evt => { evt.totalCols = columns.length })
+                      })
+
                       return (
-                        <TouchableOpacity
-                          key={`${weekOffset}-${hour}-${dateStr}`}
+                        <View 
+                          key={`${weekOffset}-${dateStr}`} 
                           style={[
-                            styles.cell,
+                            styles.cellColumn, 
                             { borderLeftColor: borderColor },
-                            isWeekend && { backgroundColor: '#6366f108' },
-                            HOLIDAYS[dateStr] && { backgroundColor: '#f59e0b08' },
+                            isWeekend && { backgroundColor: '#6366f105' },
+                            HOLIDAYS[dateStr] && { backgroundColor: '#f59e0b05' },
                           ]}
-                          onLongPress={() => onLongPressDate?.(dateStr, hour)}
-                          delayLongPress={400}
-                          activeOpacity={1}
                         >
-                          {cellData.local.map(e => (
+                          {HOURS.map((hour) => (
                             <TouchableOpacity
-                              key={`${weekOffset}-${e.id}`}
-                              style={[styles.eventBlock, { backgroundColor: e.color + '33' }]}
-                              onPress={() => onEventPress?.(e)}
-                            >
-                              <ThemedText style={[styles.eventTitle, { color: e.color }]} numberOfLines={1}>
-                                {e.title}
-                              </ThemedText>
-                            </TouchableOpacity>
+                              key={hour}
+                              style={[styles.gridSlot, { borderTopColor: borderColor }]}
+                              onLongPress={() => onLongPressDate?.(dateStr, hour)}
+                              delayLongPress={400}
+                              activeOpacity={1}
+                            />
                           ))}
-                          
-                          {showIcal === true && cellData.ical.map(e => {
-                            const colors = getEventColors(e.type ?? 'CM', e.title)
-                            e.prof = extractProf(e.description, profs) ?? ''
-                            return (
-                              <TouchableOpacity
-                                key={`${weekOffset}-${hour}-${dateStr}-${e.uid}`}
-                                style={[styles.eventBlock, { backgroundColor: colors.background }]}
-                                onPress={() => onIcalEventPress?.(e)}
-                              >
-                                <ThemedText
-                                  style={[styles.eventTitle, { color: colors.foreground }]}
-                                  numberOfLines={1}
+
+                          {dayEvents.map((e) => {
+                            const startHour = e.start.hour()
+                            const startMin = e.start.minute()
+                            const durationMin = e.end.diff(e.start, 'minute')
+
+                            const topOffset = (startHour + startMin / 60) * ROW_HEIGHT
+                            const blockHeight = (durationMin / 60) * ROW_HEIGHT
+
+                            const widthPct = 100 / (e.totalCols || 1)
+                            const leftPct = (e.colIndex || 0) * widthPct
+
+                            if (e.isLocal) {
+                              const eventColor = e.color || '#3b82f6'
+                              return (
+                                <TouchableOpacity
+                                  key={`local-${e.id}`}
+                                  style={[
+                                    styles.eventBlock, 
+                                    { 
+                                      position: 'absolute',
+                                      top: topOffset + 1,
+                                      height: blockHeight - 2,
+                                      left: `${leftPct}%`,
+                                      width: `${widthPct}%`,
+                                      backgroundColor: eventColor + '33',
+                                      borderLeftWidth: 3,
+                                      borderLeftColor: eventColor
+                                    }
+                                  ]}
+                                  onPress={() => onEventPress?.(e.original)}
                                 >
-                                  {e.title} ({e.type})
-                                </ThemedText>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 6 }}>
-                                  {e.location && (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4}}>
-                                      <Ionicons name="location" size={10} style={{ color: colors.foreground }} />
-                                      <ThemedText style={[styles.eventMeta, { color: colors.foreground }]} numberOfLines={1}>
-                                        {e.location}
-                                      </ThemedText>
+                                  <ThemedText style={[styles.eventTitle, { color: eventColor }]} numberOfLines={1}>
+                                    {e.title}
+                                  </ThemedText>
+                                </TouchableOpacity>
+                              )
+                            } else {
+                              const colors = getEventColors(e.type ?? 'CM', e.title)
+                            
+                              e.prof = extractProf(e.description || '', profs) ?? ''
+                              e.original.prof = e.prof
+
+                              return (
+                                <TouchableOpacity
+                                  key={`ical-${e.id}`}
+                                  style={[
+                                    styles.eventBlock, 
+                                    { 
+                                      position: 'absolute',
+                                      top: topOffset + 1,
+                                      height: blockHeight - 2,
+                                      left: `${leftPct}%`,
+                                      width: `${widthPct}%`,
+                                      backgroundColor: colors.background 
+                                    }
+                                  ]}
+                                  onPress={() => onIcalEventPress?.(e.original)}
+                                >
+                                  <ThemedText style={[styles.eventTitle, { color: colors.foreground }]} numberOfLines={2}>
+                                    {e.title} {e.type ? `(${e.type})` : ''}
+                                  </ThemedText>
+                                  
+                                  {blockHeight > 35 && (
+                                    <View style={styles.metaContainer}>
+                                      <View style={styles.metaRow}>
+                                        {/* Section Salle (à gauche) */}
+                                        {e.location ? (
+                                          <View style={styles.metaItem}>
+                                            <Ionicons name="location" size={10} style={{ color: colors.foreground, marginRight: 2 }} />
+                                            <ThemedText style={[styles.eventMeta, { color: colors.foreground }]} numberOfLines={1}>
+                                              {e.location}
+                                            </ThemedText>
+                                          </View>
+                                        ) : <View />}
+
+                                        {/* Section Prof (à droite) */}
+                                        {e.prof ? (
+                                          <View style={[styles.metaItem, { marginRight: 4 }]}>
+                                            <Ionicons name="person" size={10} style={{ color: colors.foreground }} />
+                                          </View>
+                                        ) : null}
+                                      </View>
                                     </View>
                                   )}
-                                  {e.prof && (
-                                    <Ionicons name="person" size={10} style={{ color: colors.foreground }} />
-                                  )}
-                                </View>
-                              </TouchableOpacity>
-                            )
+                                </TouchableOpacity>
+                              )
+                            }
                           })}
-                        </TouchableOpacity>
+                        </View>
                       )
                     })}
+
+                    {isCurrentWeekDisplay && (
+                      <View style={[styles.globalTimeIndicator, { top: indicatorTop }]}>
+                        <View style={styles.indicatorCircle} />
+                        <View style={styles.indicatorLine} />
+                      </View>
+                    )}
                   </View>
-                ))}
+                </View>
               </ScrollView>
             </View>
           )
@@ -308,32 +445,76 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 16,
   },
-  hourRow: {
+  gridBody: {
     flexDirection: 'row',
-    height: 56,
-    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  hourLabelContainer: {
+    height: ROW_HEIGHT,
   },
   hourLabel: {
-    width: 44,
     fontSize: 11,
     textAlign: 'right',
     paddingRight: 8,
-    lineHeight: 14,
+    marginTop: -6,
   },
-  cell: {
+  weekDaysContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    position: 'relative',
+  },
+  cellColumn: {
     flex: 1,
     borderLeftWidth: StyleSheet.hairlineWidth,
+    position: 'relative',
+  },
+  gridSlot: {
+    height: ROW_HEIGHT,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   eventBlock: {
-    margin: 1,
+    marginHorizontal: 0.5,
     borderRadius: 4,
-    padding: 2,
-    flex: 1,
+    padding: 3,
+    overflow: 'hidden',
   },
-  eventTitle: { fontSize: 10, fontWeight: '500' },
+  eventTitle: { fontSize: 9, fontWeight: '700', lineHeight: 11 },
+  metaContainer: { 
+    marginTop: 2
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%'
+  },
+  metaItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center',
+  },
   eventMeta: { fontSize: 8, opacity: 0.8 },
-  holidayLabel: {
-    fontSize: 9,
-    textAlign: 'center',
+  globalTimeIndicator: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 99,
+    height: 10,
+    transform: [{ translateY: -5 }],
+    pointerEvents: 'none',
+  },
+  indicatorCircle: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#a6a6aa',
+    position: 'absolute',
+    left: -4,
+    zIndex: 100,
+  },
+  indicatorLine: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: '#d1d1d6',
   },
 })

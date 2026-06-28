@@ -5,14 +5,13 @@ import { ThemedText } from '@/components/themed-text'
 import { ThemedTouchable } from '@/components/themed-touchable'
 import { ThemedView } from '@/components/themed-view'
 import { useThemeColor } from '@/hooks/use-theme-color'
+import { scheduleTaskNotifications } from '@/src/features/notifications/useNotifications'
 import { useDeleteTask, useTasks, useToggleTask } from '@/src/features/tasks/useTasks'
 import { SubTask, Task } from '@/src/types/tasks'
-import { scheduleTaskNotifications, cancelTaskNotifications } from '@/src/features/notifications/useNotifications'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import BottomSheet from '@gorhom/bottom-sheet'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native'
-import { useEffect } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface SubTaskProps {
@@ -41,7 +40,7 @@ function SubTaskItem({ task, subtask, handleToggleTask }: SubTaskProps) {
       <Ionicons
         name={subtask.is_completed ? 'checkmark-circle' : 'ellipse-outline'}
         size={16}
-        color={subtask.is_completed ? '#6366f1' : mutedColor}
+        color={subtask.is_completed ? '#10b981' : mutedColor}
       />
       <ThemedText style={[styles.subtaskTitle, subtask.is_completed && styles.completed]}>
         {subtask.title}
@@ -68,37 +67,8 @@ function TaskItem({ task }: { task: Task & { subtasks: SubTask[] } }) {
   }
 
   return (
-    <View style={[styles.card, { backgroundColor: cardBg, position: 'relative' }, task.duration_minutes ? { paddingBottom: 44 } : null]}>
-      {/* Header tâche */}
-      <View style={styles.taskRow}>
-        <TouchableOpacity onPress={() => handleToggleTask(task.id, task.is_completed, 'task')}>
-          <Ionicons
-            name={task.is_completed ? 'checkmark-circle' : 'ellipse-outline'}
-            size={22}
-            color={task.is_completed ? '#6366f1' : mutedColor}
-          />
-        </TouchableOpacity>
-
-        <View style={styles.taskContent}>
-          <ThemedText style={[styles.taskTitle, task.is_completed && styles.completed]}>
-            {task.title}
-          </ThemedText>
-          <View style={styles.meta}>
-            {task.due_date && (
-              <ThemedText style={[styles.metaText, { color: mutedColor }]}>
-                <Ionicons name="calendar-outline" size={11} /> {task.due_date}
-              </ThemedText>
-            )}
-            {task.duration_minutes && (
-              <ThemedText style={[styles.metaText, { color: mutedColor }]}>
-                <Ionicons name="time-outline" size={11} /> {task.duration_minutes}min
-              </ThemedText>
-            )}
-          </View>
-        </View>
-
-        <TouchableOpacity onPress={() => {
-          Alert.alert(
+    <TouchableOpacity onLongPress={() => {
+      Alert.alert(
             'Supprimer',
             `Supprimer "${task.title}"`,
             [
@@ -106,22 +76,49 @@ function TaskItem({ task }: { task: Task & { subtasks: SubTask[] } }) {
               { text: 'Supprimer', style: 'destructive', onPress: () => remove(task.id) },
             ]
           )
-        }}>
-          <Ionicons name="trash-outline" size={18} color="#ef4444" />
-        </TouchableOpacity>
-      </View>
+    }}>
+      <View style={[styles.card, { backgroundColor: cardBg, position: 'relative' }, task.duration_minutes ? { paddingBottom: 44 } : null]}>
+        {/* Header tâche */}
+        <View style={styles.taskRow}>
+          <TouchableOpacity onPress={() => handleToggleTask(task.id, task.is_completed, 'task')}>
+            <Ionicons
+              name={task.is_completed ? 'checkmark-circle' : 'ellipse-outline'}
+              size={22}
+              color={task.is_completed ? '#10b981' : mutedColor}
+            />
+          </TouchableOpacity>
 
-      {/* Subtasks */}
-      {task.subtasks.length > 0 && (
-        <View style={styles.subtasks}>
-          {task.subtasks.map(s => <SubTaskItem key={s.id} task={task} subtask={s} handleToggleTask={handleToggleTask} />)}
+          <View style={styles.taskContent}>
+            <ThemedText style={[styles.taskTitle, task.is_completed && styles.completed]}>
+              {task.title}
+            </ThemedText>
+            <View style={styles.meta}>
+              {task.due_date && (
+                <ThemedText style={[styles.metaText, { color: mutedColor }]}>
+                  <Ionicons name="calendar-outline" size={11} /> {task.due_date}
+                </ThemedText>
+              )}
+              {task.duration_minutes && (
+                <ThemedText style={[styles.metaText, { color: mutedColor }]}>
+                  <Ionicons name="time-outline" size={11} /> {task.duration_minutes}min
+                </ThemedText>
+              )}
+            </View>
+          </View>
         </View>
-      )}
 
-      {task.duration_minutes && (
-      <TaskTimer durationMinutes={task.duration_minutes} />
-    )}
-    </View>
+        {/* Subtasks */}
+        {task.subtasks.length > 0 && (
+          <View style={styles.subtasks}>
+            {task.subtasks.map(s => <SubTaskItem key={s.id} task={task} subtask={s} handleToggleTask={handleToggleTask} />)}
+          </View>
+        )}
+
+        {task.duration_minutes && (
+        <TaskTimer durationMinutes={task.duration_minutes} />
+      )}
+      </View>
+    </TouchableOpacity>
   )
 }
 

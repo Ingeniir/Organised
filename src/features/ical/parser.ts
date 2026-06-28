@@ -26,7 +26,7 @@ export function parseICal(raw: string, source: 'L2' | 'L3'): ICalEvent[] {
   const blocks = unfolded.split('BEGIN:VEVENT').slice(1)
 
   return blocks
-    .map(block => {
+    .map((block, index) => {
       const uid = extractField(block, 'UID')
       const title = extractField(block, 'SUMMARY')
       const location = extractField(block, 'LOCATION').trim()
