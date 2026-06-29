@@ -25,7 +25,9 @@ type ViewMode = 'week' | 'month'
 export default function PlanningScreen() {
   const [mode, setMode] = useState<ViewMode>('week')
   const [weekOffset, setWeekOffset] = useState(0)
+  const [monthOffset, setMonthOffset] = useState(0)
   const [weekKey, setWeekKey] = useState(0)
+  const [monthKey, setMonthKey] = useState(0)
   const [icalRange, setIcalRange] = useState({
     firstDate: dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'),
     lastDate: dayjs().add(1, 'month').endOf('month').format('YYYY-MM-DD'),
@@ -73,9 +75,14 @@ export default function PlanningScreen() {
     detailsSheetRef.current?.expand()
   }
 
-  const handleResetToToday = () => {
-    setWeekOffset(0)
-    setWeekKey(prev => prev + 1)
+  const handleResetToToday = (mode: 'week' | 'month') => {
+    if (mode === 'week') {
+      setWeekOffset(0)
+      setWeekKey(prev => prev + 1)
+    } else {
+      setMonthOffset(0)
+      setMonthKey(prev => prev + 1)
+    }
     toast.show({
       variant: 'message',
       icon: 'calendar-today',
@@ -92,8 +99,8 @@ export default function PlanningScreen() {
           {isLoading && (
             <ActivityIndicator size="small" color="#6366f1" />
           )}
-          {mode === 'week' && weekOffset !== 0 && (
-            <TouchableOpacity style={styles.todayBtn} onPress={handleResetToToday}>
+          {(weekOffset !== 0 || monthOffset !== 0) && (
+            <TouchableOpacity style={styles.todayBtn} onPress={() => handleResetToToday(mode)}>
               <ThemedText style={styles.todayBtnText}>Aujourd&#39;hui</ThemedText>
             </TouchableOpacity>
           )}
@@ -107,7 +114,7 @@ export default function PlanningScreen() {
                 <ThemedIcon name="person" size={20} />
               </ThemedTouchable>
               <TouchableOpacity
-                style={[styles.icalBtn, { backgroundColor: showIcal ? '#10b98120' : '#6f6d6d' }]}
+                style={[styles.icalBtn, { backgroundColor: showIcal && showICalL2 ? '#10b98120' : showICalL3 ? '#b0b91020' : '#6f6d6d' }]}
                 onPress={() => {
                   toggleICalL()
                   toast.show({
@@ -117,7 +124,22 @@ export default function PlanningScreen() {
                     duration: 2000,
                   })
                 }}
-                onLongPress={() => onShowICal()}
+                onLongPress={() => {
+                  onShowICal()
+                  if (showIcal) {
+                    toast.show({
+                      variant: 'message',
+                      icon: 'school',
+                      message: 'Evênement iCal désativé'
+                    })
+                  } else {
+                    toast.show({
+                      variant: 'message',
+                      icon: 'school',
+                      message: 'Evênement iCal activé'
+                    })
+                  }
+                }}
                 delayLongPress={200}
               >
                 <ThemedText style={[styles.icalBtnText]}>
@@ -161,10 +183,13 @@ export default function PlanningScreen() {
               if (offset !== undefined) setWeekOffset(offset)
             }}
           /> 
-        : <MonthView 
+        : <MonthView
+            key={monthKey}
             onSelectDate={setSelectedDate} 
             onLongPressDate={handleLongPress}
             onEventPress={handleEventPress}
+            monthOffset={monthOffset}
+            setMonthOffset={setMonthOffset}
           />
       }
 

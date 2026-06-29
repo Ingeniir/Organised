@@ -369,7 +369,7 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                                   onPress={() => onIcalEventPress?.(e.original)}
                                 >
                                   <ThemedText style={[styles.eventTitle, { color: colors.foreground }]} numberOfLines={2}>
-                                    {e.title} {e.type ? `(${e.type})` : ''}
+                                    {e.title} {e.type && !e.title.includes('fin des enseignements') ? `(${e.type})` : ''}
                                   </ThemedText>
                                   
                                   {blockHeight > 35 && (
