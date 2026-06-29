@@ -9,10 +9,11 @@ export type ThemedIconProps = {
   size?: number
   lightColor?: string
   darkColor?: string
+  color?: string
 }
 
-export function ThemedIcon({ name, size = 24, lightColor, darkColor }: ThemedIconProps) {
-  const color = useThemeColor({ light: lightColor ?? '#000000', dark: darkColor ?? '#ffffff' }, 'text')
+export function ThemedIcon({ name, size = 24, lightColor, darkColor, color }: ThemedIconProps) {
+  const colors = useThemeColor({ light: color ? color : lightColor ?? '#000000', dark: color ? color : darkColor ?? '#ffffff' }, 'text')
 
-  return <Ionicons name={name} size={size} color={color} />
+  return <Ionicons name={name} size={size} color={colors} />
 }

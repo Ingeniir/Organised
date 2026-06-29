@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useICalEvents } from '@/src/features/ical/useICalEvents'
 import { scheduleICalNotifications } from '@/src/features/notifications/useNotifications'
+import { useCalendarStore } from '@/src/stores/calendarStore'
 import { useSettingsStore } from '@/src/stores/settingsStore'
 import { useToastStore } from '@/src/stores/toastStore'
 import { CalendarEvent } from '@/src/types/events'
@@ -20,10 +21,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-type ViewMode = 'week' | 'month'
 
 export default function PlanningScreen() {
-  const [mode, setMode] = useState<ViewMode>('week')
+  const { mode, setMode } = useCalendarStore()
   const [weekOffset, setWeekOffset] = useState(0)
   const [monthOffset, setMonthOffset] = useState(0)
   const [weekKey, setWeekKey] = useState(0)
@@ -149,7 +149,7 @@ export default function PlanningScreen() {
             </View>
           )}
           <View style={[styles.toggle, { backgroundColor: inactiveBg }]}>
-            {(['week', 'month'] as ViewMode[]).map((m) => (
+            {(['week', 'month'] as 'week'[] | 'month'[]).map((m) => (
               <TouchableOpacity
                 key={m}
                 style={[styles.toggleBtn, mode === m && { backgroundColor: "#10b98188" }]}

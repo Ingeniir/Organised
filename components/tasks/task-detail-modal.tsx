@@ -1,28 +1,41 @@
+// components/tasks/task-detail-modal.tsx
 import { ThemedIcon } from '@/components/themed-icon'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedTouchable } from '@/components/themed-touchable'
 import { useThemeColor } from '@/hooks/use-theme-color'
-import { useCreateTask } from '@/src/features/tasks/useTasks'
+import { useDeleteTask, useUpdateTask } from '@/src/features/tasks/useTasks'
 import dayjs from '@/src/lib/day'
+import { SubTask, Task } from '@/src/types/tasks'
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { forwardRef, useState } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { ThemedBottomSheetInput } from '../themed-bottom-sheet-input'
 
+interface TaskDetailModalProps {
+  onClose?: () => void
+}
+
+export interface TaskDetailModalRef {
+  open: (task: Task & { subtasks: SubTask[] }) => void
+  close: () => void
+}
+
 // eslint-disable-next-line react/display-name
-export const TaskModal = forwardRef<BottomSheet>((_, ref) => {
+export const TaskDetailModal = forwardRef<TaskDetailModalRef, TaskDetailModalProps>(({ onClose }, ref) => {
+  const [task, setTask] = useState<Task & { subtasks: SubTask[] } | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [dueDate, setDueDate] = useState<Date | null>(new Date())
+  const [dueDate, setDueDate] = useState<Date | null>(null)
   const [dueTime, setDueTime] = useState<Date | null>(null)
   const [showPicker, setShowPicker] = useState(false)
   const [durationMinutes, setDurationMinutes] = useState('')
-  const [subtasks, setSubtasks] = useState<string[]>([])
+  const [subtasks, setSubtasks] = useState<SubTask[]>([])
   const [subtaskInput, setSubtaskInput] = useState('')
   const [isAddingSubtask, setIsAddingSubtask] = useState(false)
 
-  const { mutate: createTask, isPending } = useCreateTask()
+  const { mutate: updateTask, isPending: isUpdating } = useUpdateTask()
+  const { mutate: deleteTask, isPending: isDeleting } = useDeleteTask()
 
   const bg = useThemeColor({ light: '#ffffff', dark: '#1c1c1e' }, 'background')
   const handleColor = useThemeColor({ light: '#e5e5e5', dark: '#3a3a3c' }, 'text')
@@ -30,21 +43,38 @@ export const TaskModal = forwardRef<BottomSheet>((_, ref) => {
   const textColor = useThemeColor({ light: '#000000', dark: '#ffffff' }, 'text')
   const chipBg = useThemeColor({ light: '#f2f2f7', dark: '#2c2c2e' }, 'background')
 
-  const reset = () => {
-    setTitle('')
-    setDescription('')
-    setDueDate(new Date())
-    setDueTime(null)
-    setDurationMinutes('')
-    setSubtasks([])
-    setSubtaskInput('')
-    setShowPicker(false)
-    setIsAddingSubtask(false)
-  }
+  const bottomSheetRef = useRef<BottomSheet>(null)
+
+  useImperativeHandle(ref, () => ({
+    open: (t) => {
+      setTask(t)
+      setTitle(t.title)
+      setDescription(t.description || '')
+      setDueDate(t.due_date ? dayjs(t.due_date).toDate() : null)
+      setDueTime(t.due_time ? dayjs(`1970-01-01T${t.due_time}`).toDate() : null)
+      setDurationMinutes(t.duration_minutes?.toString() || '')
+      setSubtasks(t.subtasks || [])
+      setSubtaskInput('')
+      setIsAddingSubtask(false)
+      setShowPicker(false)
+      bottomSheetRef.current?.expand()
+    },
+    close: () => {
+      bottomSheetRef.current?.close()
+      if (onClose) onClose()
+    },
+  }))
 
   const handleAddSubtask = () => {
     if (!subtaskInput.trim()) return
-    setSubtasks(prev => [...prev, subtaskInput.trim()])
+    // Simuler un nouvel ID local
+    const newSubtask: SubTask = {
+      id: `temp-${Date.now()}`,
+      task_id: task?.id || '',
+      title: subtaskInput.trim(),
+      is_completed: false,
+    }
+    setSubtasks(prev => [...prev, newSubtask])
     setSubtaskInput('')
   }
 
@@ -52,53 +82,81 @@ export const TaskModal = forwardRef<BottomSheet>((_, ref) => {
     setSubtasks(prev => prev.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = () => {
+  const handleToggleSubtask = (index: number) => {
+    setSubtasks(prev => prev.map((s, i) =>
+      i === index ? { ...s, is_completed: !s.is_completed } : s
+    ))
+  }
+
+  const handleSave = () => {
+    if (!task) return
     if (!title.trim()) return Alert.alert('Erreur', 'Le titre est obligatoire')
 
-    createTask(
-      {
-        title,
-        description: description || undefined,
-        due_date: dueDate ? dayjs(dueDate).format('YYYY-MM-DD') : undefined,
-        due_time: dueTime ? dayjs(dueTime).format('HH:mm') : undefined,
-        duration_minutes: durationMinutes ? parseInt(durationMinutes) : undefined,
-        is_completed: false,
-        subtasks: subtasks.map(t => ({ title: t })),
+    const updatedTask = {
+      id: task.id,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      due_date: dueDate ? dayjs(dueDate).format('YYYY-MM-DD') : undefined,
+      due_time: dueTime ? dayjs(dueTime).format('HH:mm') : undefined,
+      duration_minutes: durationMinutes ? parseInt(durationMinutes) : undefined,
+      subtasks: subtasks.map(s => ({
+        id: s.id,
+        title: s.title,
+        is_completed: s.is_completed,
+      })),
+    }
+
+    updateTask(updatedTask, {
+      onSuccess: () => {
+        ;(ref as any).current?.close()
+        if (onClose) onClose()
       },
-      {
-        onSuccess: () => {
-          reset()
-          ;(ref as any)?.current?.close()
+    })
+  }
+
+  const handleDelete = () => {
+    if (!task) return
+    Alert.alert(
+      'Supprimer',
+      `Supprimer "${task.title}" ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => {
+            deleteTask(task.id, {
+              onSuccess: () => {
+                ;(ref as any).current?.close()
+                if (onClose) onClose()
+              },
+            })
+          },
         },
-      }
+      ]
     )
   }
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-    if (selectedDate) {
-      setDueDate(selectedDate)
-    }
+    if (selectedDate) setDueDate(selectedDate)
   }
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
-    if (selectedTime) {
-      setDueTime(selectedTime)
-    }
+    if (selectedTime) setDueTime(selectedTime)
   }
 
-  const confirmDateTime = () => {
-    setShowPicker(false)
-  }
-
+  const confirmDateTime = () => setShowPicker(false)
   const clearDateTime = () => {
     setDueDate(null)
     setDueTime(null)
     setShowPicker(false)
   }
 
+  if (!task) return null
+
   return (
     <BottomSheet
-      ref={ref}
+      ref={bottomSheetRef}
       index={-1}
       snapPoints={['65%', '93%']}
       enablePanDownToClose
@@ -108,9 +166,14 @@ export const TaskModal = forwardRef<BottomSheet>((_, ref) => {
       handleIndicatorStyle={{ backgroundColor: handleColor }}
     >
       <BottomSheetScrollView contentContainerStyle={styles.container}>
-        <ThemedText type="defaultSemiBold" style={styles.sheetTitle}>
-          Nouvelle tâche
-        </ThemedText>
+        <View style={styles.headerRow}>
+          <ThemedText type="defaultSemiBold" style={styles.sheetTitle}>
+            Modifier la tâche
+          </ThemedText>
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}>
+            <ThemedIcon name="trash-outline" size={22} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
 
         <View style={[styles.inputRow, { backgroundColor: chipBg }]}>
           <ThemedIcon name="document-text-outline" size={20} color={mutedColor} />
@@ -208,9 +271,23 @@ export const TaskModal = forwardRef<BottomSheet>((_, ref) => {
           </ThemedText>
 
           {subtasks.map((s, i) => (
-            <View key={i} style={[styles.subtaskRow, { borderBottomColor: handleColor }]}>
-              <ThemedIcon name="checkmark-circle-outline" size={18} color="#6366f1" />
-              <ThemedText style={[styles.subtaskLabel, { color: textColor }]}>{s}</ThemedText>
+            <View key={s.id} style={[styles.subtaskRow, { borderBottomColor: handleColor }]}>
+              <TouchableOpacity onPress={() => handleToggleSubtask(i)}>
+                <ThemedIcon
+                  name={s.is_completed ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={18}
+                  color={s.is_completed ? '#10b981' : '#6366f1'}
+                />
+              </TouchableOpacity>
+              <ThemedText
+                style={[
+                  styles.subtaskLabel,
+                  { color: textColor },
+                  s.is_completed && styles.completed,
+                ]}
+              >
+                {s.title}
+              </ThemedText>
               <TouchableOpacity onPress={() => handleRemoveSubtask(i)} style={styles.deleteBtn}>
                 <ThemedIcon name="trash-outline" size={18} color="#ef4444" />
               </TouchableOpacity>
@@ -250,14 +327,14 @@ export const TaskModal = forwardRef<BottomSheet>((_, ref) => {
 
         <ThemedTouchable
           variant="primary"
-          onPress={handleSubmit}
-          disabled={isPending}
+          onPress={handleSave}
+          disabled={isUpdating}
           style={styles.submitBtn}
           lightColor="#10b981"
           darkColor="#10b981"
         >
           <ThemedText style={styles.submitText}>
-            {isPending ? 'Enregistrement...' : 'Ajouter la tâche'}
+            {isUpdating ? 'Enregistrement...' : 'Enregistrer'}
           </ThemedText>
         </ThemedTouchable>
       </BottomSheetScrollView>
@@ -272,9 +349,19 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     gap: 14,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   sheetTitle: {
     fontSize: 20,
-    marginBottom: 4,
+  },
+  deleteBtn: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#ef444410',
   },
   sectionTitle: {
     fontSize: 15,
@@ -361,8 +448,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
   },
-  deleteBtn: {
-    padding: 4,
+  completed: {
+    textDecorationLine: 'line-through',
+    opacity: 0.5,
   },
   addSubtaskBtn: {
     flexDirection: 'row',

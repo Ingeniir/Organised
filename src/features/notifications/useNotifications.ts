@@ -97,7 +97,7 @@ export async function scheduleTaskNotifications(tasks: Task[]) {
     // Assuming due_date is in YYYY-MM-DD format
     const dueDate = dayjs(task.due_date)
     // Set a default time of 9:00 AM for the due date
-    const dueDateTime = dueDate.set('hour', 14).set('minute', 7).set('second', 0)
+    const dueDateTime = dueDate.set('hour', Number(task.due_time?.split(':')[0])).set('minute', Number(task.due_time?.split(':')[1]))
 
     // Ignore les tâches dont la date d'échéance est passée
     if (dueDateTime.isBefore(now)) continue

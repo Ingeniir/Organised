@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/themed-view'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useAuthStore } from '@/src/features/auth/authStore'
 import { supabase } from '@/src/lib/supabase'
+import { useCalendarStore } from '@/src/stores/calendarStore'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
@@ -16,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 export default function DashboardScreen() {
   const [cardWidth, setCardWidth] = useState(0)
   const { user } = useAuthStore()
+  const { setMode } = useCalendarStore()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const displayName = user?.user_metadata?.display_name ?? user?.email
@@ -42,7 +44,10 @@ export default function DashboardScreen() {
           {/* Planning mois */}
           <TouchableOpacity
             style={[styles.card, { width: cardWidth, backgroundColor: cardBg }]}
-            onPress={() => router.push('/(tabs)/planning')}
+            onPress={() => {
+              setMode('month')
+              router.push('/(tabs)/planning')
+            }}
           >
             {cardWidth > 0 && <CalendarPreview width={cardWidth} height={cardWidth} />}
           </TouchableOpacity>

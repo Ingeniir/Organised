@@ -1,3 +1,4 @@
+import { TaskDetailModal, TaskDetailModalRef } from '@/components/tasks/task-detail-modal'
 import { TaskModal } from '@/components/tasks/task-modal'
 import { TaskTimer } from '@/components/tasks/task-timer'
 import { ThemedIcon } from '@/components/themed-icon'
@@ -10,7 +11,7 @@ import { useDeleteTask, useTasks, useToggleTask } from '@/src/features/tasks/use
 import { SubTask, Task } from '@/src/types/tasks'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import BottomSheet from '@gorhom/bottom-sheet'
-import { useEffect, useRef } from 'react'
+import { RefObject, useEffect, useRef } from 'react'
 import { Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -49,7 +50,7 @@ function SubTaskItem({ task, subtask, handleToggleTask }: SubTaskProps) {
   )
 }
 
-function TaskItem({ task }: { task: Task & { subtasks: SubTask[] } }) {
+function TaskItem({ task, detailModalRef }: { task: Task & { subtasks: SubTask[] }, detailModalRef: RefObject<TaskDetailModalRef | null> }) {
   const { mutate: toggle } = useToggleTask()
   const { mutate: remove } = useDeleteTask()
   const mutedColor = useThemeColor({ light: '#999', dark: '#666' }, 'text')
@@ -66,8 +67,12 @@ function TaskItem({ task }: { task: Task & { subtasks: SubTask[] } }) {
     toggle({ id, is_completed, type })
   }
 
+  const handleOpenDetail = (task: Task & { subtasks: SubTask[] }) => {
+    detailModalRef.current?.open(task)
+  }
+
   return (
-    <TouchableOpacity onLongPress={() => {
+    <TouchableOpacity onPress={() => handleOpenDetail(task)} onLongPress={() => {
       Alert.alert(
             'Supprimer',
             `Supprimer "${task.title}"`,
@@ -95,7 +100,7 @@ function TaskItem({ task }: { task: Task & { subtasks: SubTask[] } }) {
             <View style={styles.meta}>
               {task.due_date && (
                 <ThemedText style={[styles.metaText, { color: mutedColor }]}>
-                  <Ionicons name="calendar-outline" size={11} /> {task.due_date}
+                  <Ionicons name="calendar-outline" size={11} /> {task.due_date} - {task.due_time}
                 </ThemedText>
               )}
               {task.duration_minutes && (
@@ -126,6 +131,7 @@ export default function TasksScreen() {
   const { data: tasks = [], isLoading } = useTasks()
   const insets = useSafeAreaInsets()
   const bottomSheetRef = useRef<BottomSheet>(null)
+  const detailModalRef = useRef<TaskDetailModalRef>(null)
 
   useEffect(() => {
     if (tasks.length > 0) {
@@ -150,7 +156,7 @@ export default function TasksScreen() {
         data={tasks}
         keyExtractor={t => t.id}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => <TaskItem task={item} />}
+        renderItem={({ item }) => <TaskItem task={item} detailModalRef={detailModalRef} />}
         ListEmptyComponent={
           !isLoading ? (
             <ThemedText style={styles.empty}>Aucune tâche pour l&#39;instant</ThemedText>
@@ -159,6 +165,7 @@ export default function TasksScreen() {
       />
 
       <TaskModal ref={bottomSheetRef} />
+      <TaskDetailModal ref={detailModalRef} onClose={() => {}} />
     </ThemedView>
   )
 }

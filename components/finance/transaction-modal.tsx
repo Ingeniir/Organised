@@ -11,7 +11,7 @@ import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native'
 
 const CATEGORIES = {
   expense: ['Alimentation', 'Transport', 'Loisirs', 'Santé', 'Shopping', 'Abonnement', 'Autre'],
-  income: ['Salaire', 'Virement', 'Remboursement', 'Autre'],
+  income: ['Bourse', 'Salaire', 'Remboursement', 'Autre'],
   transfer: ['Virement'],
 }
 

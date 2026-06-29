@@ -6,6 +6,7 @@ export interface Task {
     is_completed: boolean
     duration_minutes?: number
     due_date?: string
+    due_time?: string
     created_at: string
 }
 

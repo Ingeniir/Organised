@@ -97,3 +97,88 @@ export function useToggleTask() {
         })
     })
 }
+
+export function useUpdateTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ 
+      id, 
+      title, 
+      description, 
+      due_date, 
+      due_time, 
+      duration_minutes, 
+      subtasks 
+    }: {
+      id: string
+      title: string
+      description?: string
+      due_date?: string
+      due_time?: string
+      duration_minutes?: number
+      subtasks: { id: string; title: string; is_completed: boolean }[]
+    }) => {
+      // Mise à jour de la tâche
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ 
+          title, 
+          description, 
+          due_date, 
+          due_time, 
+          duration_minutes 
+        })
+        .eq('id', id)
+
+      if (taskError) throw taskError
+
+      // Récupérer les sous-tâches existantes pour gérer les suppressions
+      const { data: existingSubtasks, error: fetchError } = await supabase
+        .from('subtasks')
+        .select('id')
+        .eq('task_id', id)
+
+      if (fetchError) throw fetchError
+
+      const existingIds = existingSubtasks.map(s => s.id)
+      const updatedIds = subtasks.map(s => s.id)
+
+      // Supprimer les sous-tâches qui ne sont plus dans la liste
+      const toDelete = existingIds.filter(id => !updatedIds.includes(id))
+      if (toDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('subtasks')
+          .delete()
+          .in('id', toDelete)
+        if (deleteError) throw deleteError
+      }
+
+      // Mettre à jour ou insérer les sous-tâches
+      for (const sub of subtasks) {
+        if (sub.id.startsWith('temp-')) {
+          // Nouvelle sous-tâche (générée localement)
+          const { error: insertError } = await supabase
+            .from('subtasks')
+            .insert({ 
+              task_id: id, 
+              title: sub.title, 
+              is_completed: sub.is_completed 
+            })
+          if (insertError) throw insertError
+        } else {
+          // Mise à jour d'une sous-tâche existante
+          const { error: updateError } = await supabase
+            .from('subtasks')
+            .update({ 
+              title: sub.title, 
+              is_completed: sub.is_completed 
+            })
+            .eq('id', sub.id)
+          if (updateError) throw updateError
+        }
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}

@@ -1,14 +1,26 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs, useSegments } from 'expo-router';
+import React, { useEffect } from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useCalendarStore } from '@/src/stores/calendarStore';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function TabLayout() {
+  const { setMode } = useCalendarStore()
   const colorScheme = useColorScheme();
+  const segments = useSegments()
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (segments[1] !== 'planning') {
+        setMode('week')
+      }
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [segments[1], setMode])
 
   return (
     <Tabs

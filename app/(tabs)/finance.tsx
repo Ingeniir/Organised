@@ -144,9 +144,8 @@ export default function FinanceScreen() {
             <ThemedText style={[styles.mainCardLabel, { color: statLabelColor }]}>Compte principal</ThemedText>
             <View style={styles.mainCardBalance}>
               <ThemedText style={[styles.mainCardBalanceText, { color: mainCardText }]}>
-                {Number(mainAccount.balance).toFixed(2)}
+                {Number(mainAccount.balance).toFixed(2)} €
               </ThemedText>
-              <ThemedIcon name="logo-euro" size={20} lightColor={mainCardText} darkColor={mainCardText} />
             </View>
             <View style={styles.mainCardStats}>
               <View style={styles.mainCardStat}>
@@ -218,8 +217,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   mainCardLabel: { fontSize: 13, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
-  mainCardBalance: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 34 },
-  mainCardBalanceText: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
+  mainCardBalance: { flexDirection: 'row', alignItems: 'baseline' },
+  mainCardBalanceText: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5, paddingTop: 6 },
   mainCardStats: { flexDirection: 'row', gap: 16, marginTop: 6, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#0a7ea420' },
   mainCardStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   mainCardStatText: { fontSize: 13, fontWeight: '600' },
