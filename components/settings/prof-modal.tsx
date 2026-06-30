@@ -1,16 +1,20 @@
 import { ThemedText } from '@/components/themed-text'
 import { useThemeColor } from '@/hooks/use-theme-color'
+import { useAddProf, useProfs } from '@/src/features/profs/useProf'
 import { useSettingsStore } from '@/src/stores/settingsStore'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet'
 import { forwardRef, useState } from 'react'
-import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
+import { ProfRow } from '../ui/ProfRow'
 
 
 // eslint-disable-next-line react/display-name
 export const ProfsManagementModal = forwardRef<BottomSheet>((_, ref) => {
   const [input, setInput] = useState('')
-  const { profs, addProf, removeProf, showICalL2 } = useSettingsStore()
+  const { showICalL2 } = useSettingsStore()
+  const { data: profs = []} = useProfs()
+  const { mutate: addProf } = useAddProf()
 
   const bg = useThemeColor({ light: '#ffffff', dark: '#1c1c1e' }, 'background')
   const handleColor = useThemeColor({ light: '#e5e5e5', dark: '#3a3a3c' }, 'text')
@@ -23,7 +27,7 @@ export const ProfsManagementModal = forwardRef<BottomSheet>((_, ref) => {
       addProf(`${input.toUpperCase()}${showICalL2 ? 'L2' : 'L3'}`)
       setInput('')
     }
-  }
+  } 
 
   return (
     <BottomSheet
@@ -39,7 +43,7 @@ export const ProfsManagementModal = forwardRef<BottomSheet>((_, ref) => {
     >
       <BottomSheetFlatList
         data={profs}
-        keyExtractor={(item) => item}
+        keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.listContent}
@@ -76,32 +80,13 @@ export const ProfsManagementModal = forwardRef<BottomSheet>((_, ref) => {
           <View style={styles.emptyComponent}>
             <Ionicons name="people-outline" size={40} color={mutedColor} style={{ marginBottom: 8 }} />
             <ThemedText style={{ color: mutedColor, fontSize: 14, textAlign: 'center' }}>
-              Aucun enseignant configuré pour le moment.
+              Aucun enseignant configuré pour le moment. <ThemedText>{profs.length}</ThemedText>
             </ThemedText>
           </View>
         }
         renderItem={({ item }) => (
           <View style={[styles.profRow, { borderBottomColor: handleColor }]}>
-            <View style={styles.profInfo}>
-              <Ionicons name="person-outline" size={16} color={item.includes('L2') ? '#10b981' : '#b0b910'} />
-              <ThemedText style={styles.profName}>{item.slice(0, -2)} - {item.slice(-2)}</ThemedText>
-            </View>
-            <TouchableOpacity
-              onPress={() => {
-                Alert.alert(
-                  'Supprimer',
-                  `Supprimer ${item.slice(0, -2)} ?`,
-                  [
-                    { text: 'Annuler', style: 'cancel' },
-                    { text: 'Supprimer', style: 'destructive', onPress: () => removeProf(item) },
-                  ]
-                )
-              }}
-              style={styles.deleteBtn}
-              activeOpacity={0.6}
-            >
-              <Ionicons name="trash-outline" size={18} color="#ef4444" />
-            </TouchableOpacity>
+            <ProfRow name={item.name} />
           </View>
         )}
       />

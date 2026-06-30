@@ -3,6 +3,7 @@ import { useThemeColor } from '@/hooks/use-theme-color'
 import { Palette } from '@/src/constants/colors'
 import { useEvents } from '@/src/features/calendar/useEvents'
 import { extractProf } from '@/src/features/ical/parser'
+import { useProfs } from '@/src/features/profs/useProf'
 import dayjs from '@/src/lib/day'
 import { useSettingsStore } from '@/src/stores/settingsStore'
 import Ionicons from '@expo/vector-icons/Ionicons'
@@ -61,7 +62,8 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
   const [selected, setSelected] = useState<string | null>(null)
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0)
   const [now, setNow] = useState(dayjs())
-  const { showIcal, profs } = useSettingsStore()
+  const { showIcal } = useSettingsStore()
+  const { data: profs = [], isPending } = useProfs()
   
   const flatListRef = useRef<FlatList>(null)
   const scrollRefs = useRef<Record<number, ScrollView | null>>({})

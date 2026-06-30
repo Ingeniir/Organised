@@ -1,4 +1,5 @@
 import { ICalEvent } from '@/src/types/ical'
+import { Prof } from '@/src/types/prof'
 
 function parseICalDate(value: string): string {
   // Format: 20260711T081500Z
@@ -52,19 +53,20 @@ export function parseICal(raw: string, source: 'L2' | 'L3'): ICalEvent[] {
     .filter(Boolean) as ICalEvent[]
 }
 
-export function extractProf(description: string | undefined | null, profsList: string[]): string | null {
+export function extractProf(description: string | undefined | null, profsList: Prof[]): string | null {
   if (!description || !profsList || profsList.length === 0) return null
 
   const upperDesc = description.toUpperCase()
   const profsTrouves: string[] = []
 
   // On parcourt la liste des profs enregistrés dans le store
-  for (const prof of profsList) {
+  for (const prof of profsList.map(p => p.name)) {
     // On compare tout en majuscules pour éviter les pièges de casse
-    if (upperDesc.includes(prof.toUpperCase())) {
-      profsTrouves.push(prof)
+    if (upperDesc.includes(prof.toUpperCase().slice(0, -2))) {
+      profsTrouves.push(prof.slice(0, -2))
     }
   }
+
 
   // Si on a trouvé des profs correspondants dans la description, on les fusionne avec une virgule
   if (profsTrouves.length > 0) {
