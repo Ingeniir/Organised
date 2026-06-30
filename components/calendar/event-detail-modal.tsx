@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useDeleteEvent } from '@/src/features/calendar/useEvents'
+import { usePresences, useUpdatePresence } from '@/src/features/presence/usePresence'
 import dayjs from '@/src/lib/day'
 import { CalendarEvent } from '@/src/types/events'
 import { ICalEvent } from '@/src/types/ical'
@@ -8,6 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons'
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet'
 import { forwardRef } from 'react'
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { ThemedTouchable } from '../themed-touchable'
 
 interface Props {
   event: CalendarEvent | ICalEvent | null
@@ -41,6 +43,8 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
   const handleColor = useThemeColor({ light: '#e5e5e5', dark: '#3a3a3c' }, 'text')
   const mutedColor = useThemeColor({ light: '#999', dark: '#666' }, 'text')
   const { mutate: deleteEvent, isPending } = useDeleteEvent()
+  const { mutate: updatePresence } = useUpdatePresence()
+  const { data: presences } = usePresences()
 
   if (!event) return null
 
@@ -53,6 +57,10 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
   const color = ical
     ? getEventColors(event.type ?? 'CM', event.title).foreground
     : event.color
+
+  const currentStatus = ical 
+    ? presences?.find(p => p.uid === event.uid)?.status || 'absent'
+    : null
 
   const handleDelete = () => {
     if (ical) return
@@ -80,7 +88,6 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
       handleIndicatorStyle={{ backgroundColor: handleColor }}
     >
       <BottomSheetView style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={[styles.colorBar, { backgroundColor: color }]} />
           <View style={styles.headerText}>
@@ -105,7 +112,6 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
           )}
         </View>
 
-        {/* Date & heure */}
         <View style={styles.infoRow}>
           <Ionicons name="calendar-outline" size={16} color={mutedColor} />
           <ThemedText style={[styles.infoText, { color: mutedColor }]}>
@@ -117,12 +123,11 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
           <Ionicons name="time-outline" size={16} color={mutedColor} />
           <ThemedText style={[styles.infoText, { color: mutedColor }]}>
             {start.format('HH:mm')} → {end.format('HH:mm')}
-            {'  ·  '}
+            {'   ·   '}
             {hours > 0 ? `${hours}h` : ''}{minutes > 0 ? `${minutes}min` : ''}
           </ThemedText>
         </View>
 
-        {/* Salle (iCal) */}
         {ical && event.location && (
           <View style={styles.infoRow}>
             <Ionicons name="location-outline" size={16} color={mutedColor} />
@@ -132,7 +137,6 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
           </View>
         )}
 
-        {/* Prof (iCal) */}
         {ical && event.prof && (
           <View style={styles.infoRow}>
             <Ionicons name="person-outline" size={16} color={mutedColor} />
@@ -141,13 +145,24 @@ export const EventDetailModal = forwardRef<BottomSheet, Props>(({ event }, ref) 
             </ThemedText>
           </View>
         )}
+
+        {ical && !event.title.includes("fin des enseignements à 12h15") && (
+          <View style={{ position: 'absolute', right: 8}}>
+            <ThemedTouchable 
+              onPress={() => updatePresence({ uid: event.uid, status: currentStatus === "absent" ? "present" : "absent" })} 
+              style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: currentStatus === 'present' ? '#10b98133' : '#b93a1033'}}
+            >
+              <ThemedText style={{ color: currentStatus === 'present' ? '#10b981' : '#b93a10'}}>Status: {currentStatus}</ThemedText>
+            </ThemedTouchable>
+          </View>
+        )}
       </BottomSheetView>
     </BottomSheet>
   )
 })
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, gap: 16 },
+  container: { position: 'relative', flex: 1, padding: 20, gap: 16 },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   colorBar: { width: 4, borderRadius: 2, alignSelf: 'stretch', minHeight: 40 },
   headerText: { flex: 1, gap: 4 },

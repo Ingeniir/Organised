@@ -3,6 +3,7 @@ import { useThemeColor } from '@/hooks/use-theme-color'
 import { Palette } from '@/src/constants/colors'
 import { useEvents } from '@/src/features/calendar/useEvents'
 import { extractProf } from '@/src/features/ical/parser'
+import { usePresences, useSyncPresence } from '@/src/features/presence/usePresence'
 import { useProfs } from '@/src/features/profs/useProf'
 import dayjs from '@/src/lib/day'
 import { useSettingsStore } from '@/src/stores/settingsStore'
@@ -63,7 +64,7 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0)
   const [now, setNow] = useState(dayjs())
   const { showIcal } = useSettingsStore()
-  const { data: profs = [], isPending } = useProfs()
+  const { data: profs = [] } = useProfs()
   
   const flatListRef = useRef<FlatList>(null)
   const scrollRefs = useRef<Record<number, ScrollView | null>>({})
@@ -117,6 +118,16 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
   }
 
   const indicatorTop = (now.hour() + now.minute() / 60) * ROW_HEIGHT
+
+  // Presences
+  const { mutate: syncPresence } = useSyncPresence()
+  const { data: presences } = usePresences()
+
+  useEffect(() => {
+    if (showIcal && icalEvents.length > 0) {
+      syncPresence(icalEvents.filter(e => !e.title.includes("fin des enseignements à 12h15")))
+    }
+  }, [icalEvents, showIcal])
 
   return (
     <View style={styles.container}>
@@ -350,6 +361,8 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                               )
                             } else {
                               const colors = getEventColors(e.type ?? 'CM', e.title)
+                              const matchingPresence = presences?.find(p => p.uid === e.original.uid)
+                              e.original.status = matchingPresence ? matchingPresence.status : 'absent'
                             
                               e.prof = extractProf(e.description || '', profs) ?? ''
                               e.original.prof = e.prof
@@ -388,11 +401,14 @@ export function WeekView({ onLongPressDate, onEventPress, icalEvents = [], onIca
                                         ) : <View />}
 
                                         {/* Section Prof (à droite) */}
-                                        {e.prof ? (
-                                          <View style={[styles.metaItem, { marginRight: 4 }]}>
+                                        <View style={{ position: 'absolute', right: 4, top: 10, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                                          {e.prof ? (
                                             <Ionicons name="person" size={10} style={{ color: colors.foreground }} />
-                                          </View>
-                                        ) : null}
+                                          ) : null}
+                                          {e.original.status && !e.original.title.includes("fin des enseignements à 12h15") && (
+                                            <Ionicons name={`${e.original.status === "present" ? 'checkmark-outline' : 'close-outline'}`} />
+                                          )}
+                                        </View>
                                       </View>
                                     </View>
                                   )}
@@ -484,6 +500,7 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   metaRow: {
+    position: "relative",
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

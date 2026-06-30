@@ -5,6 +5,7 @@ export interface ICalEvent {
   location?: string
   description?: string
   prof?: string
+  status?: "present" | "absent"
   start: string
   end: string
   source: 'L2' | 'L3'
