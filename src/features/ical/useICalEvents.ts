@@ -7,8 +7,11 @@ async function fetchICal(source: 'L2' | 'L3', firstDate: string, lastDate: strin
   const url = `https://emploidutemps.univ-reunion.fr/jsp/custom/modules/plannings/anonymous_cal.jsp?resources=${resourceId}&projectId=5&calType=ical&firstDate=${firstDate}&lastDate=${lastDate}&displayConfigId=8`
 
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`Erreur fetch iCal ${source}`)
+  if (!res.ok) throw new Error(`Erreur fetch iCal ${source} (HTTP ${res.status})`)
   const text = await res.text()
+  if (!text.includes('BEGIN:VCALENDAR')) {
+    throw new Error(`Réponse invalide (pas iCal) pour ${source}`)
+  }
   return parseICal(text, source)
 }
 

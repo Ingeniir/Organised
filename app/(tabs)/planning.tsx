@@ -43,10 +43,11 @@ export default function PlanningScreen() {
 
   const { showICalL2, showICalL3, toggleICalL, showIcal, onShowICal } = useSettingsStore()
   const toast = useToastStore()
-  const { data: icalL2 = [], isLoading: loadingL2 } = useICalEvents('L2', icalRange.firstDate, icalRange.lastDate, showICalL2)
-  const { data: icalL3 = [], isLoading: loadingL3 } = useICalEvents('L3', icalRange.firstDate, icalRange.lastDate, showICalL3)
+  const { data: icalL2 = [], isLoading: loadingL2, isError: errorL2 } = useICalEvents('L2', icalRange.firstDate, icalRange.lastDate, showICalL2)
+  const { data: icalL3 = [], isLoading: loadingL3, isError: errorL3 } = useICalEvents('L3', icalRange.firstDate, icalRange.lastDate, showICalL3)
 
   const isLoading = loadingL2 || loadingL3
+  const icalError = errorL2 || errorL3
 
   const icalEvents = useMemo(() => [
     ...(showICalL2 ? icalL2 : []),
@@ -99,6 +100,9 @@ export default function PlanningScreen() {
           {isLoading && (
             <ActivityIndicator size="small" color="#6366f1" />
           )}
+          {icalError && !isLoading && (
+            <ThemedText style={{ fontSize: 10, color: '#ef4444' }}>iCal ✗</ThemedText>
+          )}
           {(weekOffset !== 0 || monthOffset !== 0) && (
             <TouchableOpacity style={styles.todayBtn} onPress={() => handleResetToToday(mode)}>
               <ThemedText style={styles.todayBtnText}>Aujourd&#39;hui</ThemedText>
@@ -113,39 +117,41 @@ export default function PlanningScreen() {
               }>
                 <ThemedIcon name="person" size={20} />
               </ThemedTouchable>
-              <TouchableOpacity
-                style={[styles.icalBtn, { backgroundColor: showIcal && showICalL2 ? '#10b98120' : showICalL3 ? '#b0b91020' : '#6f6d6d' }]}
-                onPress={() => {
-                  toggleICalL()
-                  toast.show({
-                    variant: 'message',
-                    icon: 'school',
-                    message: `Affichage ${showICalL2 ? 'L3' : 'L2'}`,
-                    duration: 2000,
-                  })
-                }}
-                onLongPress={() => {
-                  onShowICal()
-                  if (showIcal) {
+              {!icalError && !isLoading && (
+                <TouchableOpacity
+                  style={[styles.icalBtn, { backgroundColor: showIcal && showICalL2 ? '#10b98120' : showICalL3 ? '#b0b91020' : '#6f6d6d' }]}
+                  onPress={() => {
+                    toggleICalL()
                     toast.show({
                       variant: 'message',
                       icon: 'school',
-                      message: 'Evênement iCal désativé'
+                      message: `Affichage ${showICalL2 ? 'L3' : 'L2'}`,
+                      duration: 2000,
                     })
-                  } else {
-                    toast.show({
-                      variant: 'message',
-                      icon: 'school',
-                      message: 'Evênement iCal activé'
-                    })
-                  }
-                }}
-                delayLongPress={200}
-              >
-                <ThemedText style={[styles.icalBtnText]}>
-                  {showICalL2 ? "L2" : "L3"}
-                </ThemedText>
-              </TouchableOpacity>
+                  }}
+                  onLongPress={() => {
+                    onShowICal()
+                    if (showIcal) {
+                      toast.show({
+                        variant: 'message',
+                        icon: 'school',
+                        message: 'Evênement iCal désativé'
+                      })
+                    } else {
+                      toast.show({
+                        variant: 'message',
+                        icon: 'school',
+                        message: 'Evênement iCal activé'
+                      })
+                    }
+                  }}
+                  delayLongPress={200}
+                >
+                  <ThemedText style={[styles.icalBtnText]}>
+                    {showICalL2 ? "L2" : "L3"}
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
             </View>
           )}
           <View style={[styles.toggle, { backgroundColor: inactiveBg }]}>

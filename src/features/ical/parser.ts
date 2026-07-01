@@ -23,6 +23,9 @@ function extractField(block: string, field: string): string {
 }
 
 export function parseICal(raw: string, source: 'L2' | 'L3'): ICalEvent[] {
+  if (!raw.includes('BEGIN:VCALENDAR')) {
+    return []
+  }
   const unfolded = unfoldLines(raw)
   const blocks = unfolded.split('BEGIN:VEVENT').slice(1)
 
